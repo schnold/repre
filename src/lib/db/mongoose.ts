@@ -1,11 +1,12 @@
 // src/lib/db/mongoose.ts
 import mongoose from 'mongoose';
+import { mongoConfig } from '../config';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
+if (!mongoConfig.uri) {
+  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-const MONGODB_URI: string = process.env.MONGODB_URI;
+const MONGODB_URI: string = mongoConfig.uri;
 
 let cachedConnection: typeof mongoose | null = null;
 
