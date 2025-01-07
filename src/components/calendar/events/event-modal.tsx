@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useTeacherStore } from '@/store/teacher-store';
 
 interface EventFormData {
   title: string;
@@ -18,6 +19,8 @@ interface EventFormData {
   endTime: string;
   location: string;
   category: EventCategory;
+  teacherId?: string;
+  substituteTeacherId?:string
 }
 
 const EventModal: React.FC = () => {
@@ -106,6 +109,10 @@ const EventModal: React.FC = () => {
     setEventModalOpen(false);
   };
 
+
+  const { teachers } = useTeacherStore(); // retrieve list of teachers
+
+
   return (
     <Dialog open={isEventModalOpen} onOpenChange={setEventModalOpen}>
       <DialogContent className="sm:max-w-[475px]">
@@ -130,6 +137,46 @@ const EventModal: React.FC = () => {
               )}
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="teacher">Teacher</Label>
+            <Select
+              // formData.teacherId will now exist
+              value={formData.teacherId || ''}
+              // Update the formData when a teacher is selected
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, teacherId: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a Teacher" />
+              </SelectTrigger>
+              <SelectContent>
+                {teachers.map((teacher) => (
+                  // Fix the implicit "any" by defining the 'Teacher' interface
+                  <SelectItem key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Label htmlFor="substitute">Substitute Teacher</Label>
+          <Select
+            value={formData.substituteTeacherId || ""}
+            onValueChange={(value) => setFormData({ ...formData, substituteTeacherId: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="(Optional) Substitute Teacher" />
+            </SelectTrigger>
+            <SelectContent>
+              {teachers.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

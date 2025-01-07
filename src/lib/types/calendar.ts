@@ -13,8 +13,10 @@ export interface CalendarEvent {
     category: EventCategory;
     isRecurring?: boolean;
     color?: string;
+    teacherId?: string;
+    substituteTeacherId?: string  
   }
-  
+
 
 export interface DateRange {
   start: Date;
