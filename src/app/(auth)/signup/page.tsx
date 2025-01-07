@@ -1,35 +1,35 @@
-// src/app/(auth)/login/page.tsx
+// src/app/(auth)/signup/page.tsx
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Login - Repre",
-  description: "Login to your account",
+  title: "Sign Up - Repre",
+  description: "Create your account",
 };
 
-export default function LoginPage() {
+export default function SignUpPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <h1 className="text-2xl font-bold">Create an account</h1>
         <p className="text-muted-foreground">
-          Sign in to your account to continue
+          Choose your preferred sign up method
         </p>
       </div>
       
       <div className="space-y-4">
         <a href="/api/auth/login">
           <Button className="w-full" size="lg">
-            Sign in with Auth0
+            Sign up with Auth0
           </Button>
         </a>
 
         <div className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-primary hover:underline">
-            Sign up
+          Already have an account?{" "}
+          <Link href="/login" className="text-primary hover:underline">
+            Sign in
           </Link>
         </div>
       </div>

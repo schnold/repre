@@ -13,7 +13,9 @@ type NotificationStatus = {
   timestamp?: Date;
 };
 
-type MetadataRecord = Record<string, unknown>;
+type MetadataRecord = {
+    [key: string]: string | number | boolean | null | undefined;
+  };
 
 // User Schema
 export interface IUser extends Document {
@@ -34,22 +36,22 @@ export interface IUser extends Document {
 
 // Teacher Schema
 export interface ITeacher extends Document {
-  userId: Types.ObjectId;
-  organizationId: Types.ObjectId;
-  name: string;
-  email: string;
-  subjects: string[];
-  color: string;
-  availability: Array<{
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-  }>;
-  qualifications?: string[];
-  status: 'active' | 'inactive' | 'substitute';
-  preferredSubstitutes?: Types.ObjectId[];
-  metadata?: MetadataRecord;
-}
+    userId: Types.ObjectId;
+    organizationId: Types.ObjectId;
+    name: string;
+    email: string;
+    subjects: string[];
+    color: string;
+    availability: Array<{
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+    }>;
+    qualifications?: string[];
+    status: 'active' | 'inactive' | 'substitute';
+    preferredSubstitutes?: Types.ObjectId[];
+    metadata?: MetadataRecord;
+  }
 
 // Schedule Schema
 export interface ISchedule extends Document {

@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/',
-        destination: 'https://repre.io',
+        source: '/app',
+        destination: 'https://app.repre.io',
         permanent: true,
         has: [
           {
