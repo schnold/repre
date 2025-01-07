@@ -4,10 +4,14 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useTeacherStore } from '@/store/teacher-store';
+import type { CalendarEvent } from '@/lib/types/calendar';
+import type { Teacher } from '@/lib/types/teacher';
 
 type CalendarContextType = {
   isLoading: boolean;
   error: Error | null;
+  events: CalendarEvent[];
+  teachers: Teacher[];
 };
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
@@ -20,8 +24,15 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   const isLoading = false;
   const error = null;
 
+  const value = {
+    isLoading,
+    error,
+    events,
+    teachers
+  };
+
   return (
-    <CalendarContext.Provider value={{ isLoading, error }}>
+    <CalendarContext.Provider value={value}>
       {children}
     </CalendarContext.Provider>
   );

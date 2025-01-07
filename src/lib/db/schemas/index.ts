@@ -22,7 +22,7 @@ export interface IUser extends Document {
   auth0Id: string;
   email: string;
   name: string;
-  roles: string[];
+  roles: string[];  
   organizationId?: Types.ObjectId;
   lastLogin: Date;
   settings: {
@@ -123,7 +123,7 @@ const UserSchema = new Schema<IUser>({
   auth0Id: { type: String, required: true, unique: true },
   email: { type: String, required: true },
   name: { type: String, required: true },
-  roles: [{ type: String }],
+  roles: { type: [String], default: [] },  // Initialize as empty array by default
   organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
   lastLogin: { type: Date },
   settings: {
