@@ -32,6 +32,7 @@ export default function SignUpPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <Button className="w-full" asChild>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a href="/api/auth/signup?returnTo=/onboarding">Create account with Auth0</a>
             </Button>
             <div className="relative">
