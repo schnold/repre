@@ -5,14 +5,16 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/app',
-        destination: 'https://app.repre.io',
-        permanent: true,
-        has: [
-          {
-            type: 'host',
-            value: 'app.repre.io',
-          },
-        ],
+        destination: '/dashboard',
+        permanent: false,
+      }
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/',
+        destination: '/landing',
       },
     ];
   },
