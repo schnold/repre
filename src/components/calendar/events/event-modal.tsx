@@ -1,16 +1,16 @@
-'use client'
-
 import React, { useEffect, useState } from 'react';
-import { EventCategory } from '@/lib/types/calendar';
-import { useCalendarStore } from '@/store/calendar-store';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useCalendarStore } from '@/store/calendar-store';
 import { useTeacherStore } from '@/store/teacher-store';
+import { CalendarEvent, EventCategory } from '@/lib/types/calendar';
+import { Teacher } from '@/lib/types/teacher';
+import { AlertCircle, Clock } from 'lucide-react';
 
 interface EventFormData {
   title: string;
@@ -20,8 +20,9 @@ interface EventFormData {
   location: string;
   category: EventCategory;
   teacherId?: string;
-  substituteTeacherId?:string
+  substituteTeacherId?: string;
   color?: string;
+  isRecurring?: boolean;
 }
 
 const EventModal: React.FC = () => {
@@ -35,17 +36,19 @@ const EventModal: React.FC = () => {
     updateEvent 
   } = useCalendarStore();
 
+  const { teachers } = useTeacherStore();
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
-    color: "#BFD5FF",
     startTime: new Date().toISOString().slice(0, 16),
     endTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
     location: '',
-    category: 'other'
+    category: 'work',
+    color: "#BFD5FF"
   });
 
   const [errors, setErrors] = useState<Partial<EventFormData>>({});
+  const [teacherConflict, setTeacherConflict] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedEventId && modalMode === 'edit') {
@@ -57,7 +60,11 @@ const EventModal: React.FC = () => {
           startTime: event.startTime.toISOString().slice(0, 16),
           endTime: event.endTime.toISOString().slice(0, 16),
           location: event.location || '',
-          category: event.category
+          category: event.category,
+          teacherId: event.teacherId,
+          substituteTeacherId: event.substituteTeacherId,
+          color: event.color || "#BFD5FF",
+          isRecurring: event.isRecurring
         });
       }
     } else {
@@ -68,29 +75,57 @@ const EventModal: React.FC = () => {
         startTime: new Date().toISOString().slice(0, 16),
         endTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
         location: '',
-        category: 'other'
+        category: 'work',
+        color: "#BFD5FF"
       });
     }
   }, [selectedEventId, modalMode, events]);
 
+  const checkTeacherAvailability = (teacherId: string, startTime: Date, endTime: Date): boolean => {
+    // Check if teacher has any other events at this time
+    return !events.some(event => 
+      event.teacherId === teacherId &&
+      event.id !== selectedEventId && // Exclude current event when editing
+      ((event.startTime <= startTime && event.endTime > startTime) ||
+       (event.startTime < endTime && event.endTime >= endTime) ||
+       (event.startTime >= startTime && event.endTime <= endTime))
+    );
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Partial<EventFormData> = {};
+    let isValid = true;
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+      isValid = false;
     }
 
-    if (new Date(formData.startTime) >= new Date(formData.endTime)) {
+    const startDate = new Date(formData.startTime);
+    const endDate = new Date(formData.endTime);
+    
+    if (startDate >= endDate) {
       newErrors.endTime = 'End time must be after start time';
+      isValid = false;
+    }
+
+    // Teacher availability check
+    if (formData.teacherId) {
+      const isAvailable = checkTeacherAvailability(formData.teacherId, startDate, endDate);
+      if (!isAvailable) {
+        setTeacherConflict('Selected teacher has a scheduling conflict');
+        isValid = false;
+      } else {
+        setTeacherConflict(null);
+      }
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return isValid;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     const eventData = {
@@ -99,7 +134,11 @@ const EventModal: React.FC = () => {
       startTime: new Date(formData.startTime),
       endTime: new Date(formData.endTime),
       location: formData.location,
-      category: formData.category
+      category: formData.category,
+      teacherId: formData.teacherId,
+      substituteTeacherId: formData.substituteTeacherId,
+      color: formData.color,
+      isRecurring: formData.isRecurring
     };
 
     if (modalMode === 'edit' && selectedEventId) {
@@ -111,62 +150,98 @@ const EventModal: React.FC = () => {
     setEventModalOpen(false);
   };
 
+  // Filter out the main teacher from substitute options
+  const availableSubstitutes = teachers.filter(t => t.id !== formData.teacherId);
 
-  const { teachers } = useTeacherStore(); // retrieve list of teachers
-
+  // Get teacher name helper
+  const getTeacherName = (teacherId?: string) => {
+    if (!teacherId) return '';
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher ? teacher.name : '';
+  };
 
   return (
     <Dialog open={isEventModalOpen} onOpenChange={setEventModalOpen}>
       <DialogContent className="sm:max-w-[475px]">
         <DialogHeader>
           <DialogTitle>
-            {modalMode === 'edit' ? 'Edit Event' : 'Create New Event'}
+            {modalMode === 'edit' ? 'Edit Lesson' : 'Create New Lesson'}
           </DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {teacherConflict && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Scheduling Conflict</AlertTitle>
+              <AlertDescription>{teacherConflict}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <div className="relative">
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className={cn(errors.title && "border-red-500 focus-visible:ring-red-500")}
-                placeholder="Event title"
-              />
-              {errors.title && (
-                <span className="text-xs text-red-500 mt-1">{errors.title}</span>
-              )}
-            </div>
+            <Label htmlFor="title">Lesson Title</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className={cn(errors.title && "border-red-500")}
+              placeholder="e.g., Mathematics Class 10A"
+            />
+            {errors.title && (
+              <span className="text-xs text-red-500">{errors.title}</span>
+            )}
           </div>
 
           <div className="space-y-2">
-          <Label htmlFor="color">Event Color</Label>
-          <Input
-            type="color"
-            id="color"
-            value={formData.color}
-            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-          />
-        </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="teacher">Teacher</Label>
+            <Label htmlFor="teacher">Main Teacher</Label>
             <Select
-              // formData.teacherId will now exist
               value={formData.teacherId || ''}
-              // Update the formData when a teacher is selected
-              onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, teacherId: value }))
-              }
+              onValueChange={(value) => setFormData({ ...formData, teacherId: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a Teacher" />
               </SelectTrigger>
               <SelectContent>
                 {teachers.map((teacher) => (
-                  // Fix the implicit "any" by defining the 'Teacher' interface
-                  <SelectItem key={teacher.id} value={teacher.id}>
+                  <SelectItem 
+                    key={teacher.id} 
+                    value={teacher.id}
+                    className="flex items-center gap-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: teacher.color }}
+                    />
+                    {teacher.name} ({teacher.subjects.join(', ')})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="substitute">Substitute Teacher</Label>
+            <Select
+              value={formData.substituteTeacherId || ''}
+              onValueChange={(value) => 
+                setFormData({ ...formData, substituteTeacherId: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="(Optional) Select Substitute" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No Substitute Needed</SelectItem>
+                {availableSubstitutes.map((teacher) => (
+                  <SelectItem 
+                    key={teacher.id} 
+                    value={teacher.id}
+                    className="flex items-center gap-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: teacher.color }}
+                    />
                     {teacher.name}
                   </SelectItem>
                 ))}
@@ -174,46 +249,34 @@ const EventModal: React.FC = () => {
             </Select>
           </div>
 
-          <Label htmlFor="substitute">Substitute Teacher</Label>
-          <Select
-            value={formData.substituteTeacherId || ""}
-            onValueChange={(value) => setFormData({ ...formData, substituteTeacherId: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="(Optional) Substitute Teacher" />
-            </SelectTrigger>
-            <SelectContent>
-              {teachers.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Time</Label>
-              <Input
-                id="startTime"
-                type="datetime-local"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-              />
+              <div className="relative">
+                <Clock className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="startTime"
+                  type="datetime-local"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="pl-8"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="endTime">End Time</Label>
               <div className="relative">
+                <Clock className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="endTime"
                   type="datetime-local"
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className={cn(errors.endTime && "border-red-500 focus-visible:ring-red-500")}
+                  className={cn("pl-8", errors.endTime && "border-red-500")}
                 />
                 {errors.endTime && (
-                  <span className="text-xs text-red-500 mt-1">{errors.endTime}</span>
+                  <span className="text-xs text-red-500">{errors.endTime}</span>
                 )}
               </div>
             </div>
@@ -225,42 +288,21 @@ const EventModal: React.FC = () => {
               id="location"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Event location"
+              placeholder="e.g., Room 101"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={formData.category}
-              onValueChange={(value: EventCategory) => 
-                setFormData({ ...formData, category: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="work">Work</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="important">Important</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Event description"
-              rows={3}
+            <Label htmlFor="color">Event Color</Label>
+            <Input
+              type="color"
+              id="color"
+              value={formData.color}
+              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
             />
           </div>
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -269,7 +311,7 @@ const EventModal: React.FC = () => {
               Cancel
             </Button>
             <Button type="submit">
-              {modalMode === 'edit' ? 'Update' : 'Create'}
+              {modalMode === 'edit' ? 'Update' : 'Create'} Lesson
             </Button>
           </div>
         </form>
