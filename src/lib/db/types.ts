@@ -1,3 +1,4 @@
+// src/lib/db/types.ts
 import { Types } from 'mongoose';
 
 export interface MongoDateQuery {
@@ -18,24 +19,28 @@ export interface TimeRangeQuery {
 
 export interface TeacherReferenceQuery {
   teacherId?: Types.ObjectId;
-  substituteTeacherId?: Types.ObjectId;
+  substituteId?: Types.ObjectId;
 }
 
-export interface LessonQuery extends TeacherReferenceQuery {
+export interface ScheduleEntryQuery extends TeacherReferenceQuery {
   _id?: MongoIdQuery;
   startTime?: MongoDateQuery;
   endTime?: MongoDateQuery;
+  scheduleId?: Types.ObjectId;
+  status?: 'scheduled' | 'cancelled' | 'substituted';
   $or?: Array<TimeRangeQuery | TeacherReferenceQuery>;
 }
 
 export interface TeacherQuery {
   _id?: Types.ObjectId | MongoIdQuery;
-  name?: string;
+  organizationId?: Types.ObjectId;
+  status?: 'active' | 'inactive' | 'substitute';
   subjects?: string | { $in: string[] };
 }
 
 export interface ScheduleQuery {
   _id?: Types.ObjectId;
-  organizationId: string;
-  ownerId?: string;
+  organizationId: Types.ObjectId;
+  academicYear?: string;
+  term?: string;
 }

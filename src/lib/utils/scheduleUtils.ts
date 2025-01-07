@@ -1,13 +1,21 @@
+// src/lib/utils/scheduleUtils.ts
 import { Types } from 'mongoose';
-import { Schedule, Lesson, Teacher, ISchedule, ILesson, ITeacher } from '../db/schemas';
-import { 
-  LessonQuery, 
-  ScheduleQuery,
-  TeacherReferenceQuery,
-  TimeRangeQuery 
+import {
+    ChangeHistory,
+    ISchedule,
+    IScheduleEntry,
+    Schedule,
+    ScheduleEntry
+} from '../db/schemas';
+import {
+    ScheduleEntryQuery,
+    ScheduleQuery,
+    TeacherReferenceQuery,
+    TimeRangeQuery
 } from '../db/types';
 
 export class ScheduleService {
+  // Schedule Management
   static async createSchedule(data: Partial<ISchedule>): Promise<ISchedule> {
     const schedule = new Schedule(data);
     await schedule.save();
@@ -16,60 +24,112 @@ export class ScheduleService {
 
   static async getScheduleById(id: string): Promise<ISchedule | null> {
     return Schedule.findById(id)
-      .populate('lessons')
-      .populate('teachers')
+      .populate('organizationId')
       .exec();
   }
 
   static async getSchedulesByOrganization(organizationId: string): Promise<ISchedule[]> {
-    const query: ScheduleQuery = { organizationId };
+    const query: ScheduleQuery = { 
+      organizationId: new Types.ObjectId(organizationId) 
+    };
     return Schedule.find(query)
-      .populate('lessons')
-      .populate('teachers')
+      .populate('organizationId')
       .exec();
   }
 
-  static async addLessonToSchedule(scheduleId: string, lessonData: Partial<ILesson>): Promise<ILesson> {
-    const lesson = new Lesson(lessonData);
-    await lesson.save();
+  static async updateSchedule(id: string, data: Partial<ISchedule>): Promise<ISchedule | null> {
+    return Schedule.findByIdAndUpdate(id, data, { new: true }).exec();
+  }
 
-    await Schedule.findByIdAndUpdate(
-      scheduleId,
-      { $push: { lessons: lesson._id } }
+  static async deleteSchedule(id: string): Promise<void> {
+    // Delete all schedule entries first
+    await ScheduleEntry.deleteMany({ scheduleId: new Types.ObjectId(id) });
+    // Then delete the schedule
+    await Schedule.findByIdAndDelete(id);
+  }
+
+  // Schedule Entry Management
+  static async addScheduleEntry(scheduleId: string, entryData: Partial<IScheduleEntry>): Promise<IScheduleEntry> {
+    const entry = new ScheduleEntry({
+      ...entryData,
+      scheduleId: new Types.ObjectId(scheduleId)
+    });
+    await entry.save();
+
+    // Create change history
+    await ChangeHistory.create({
+      scheduleEntryId: entry._id,
+      type: 'creation',
+      userId: entryData.teacherId, // Assuming the teacher is creating the entry
+      timestamp: new Date(),
+      changes: [{
+        field: 'all',
+        oldValue: null,
+        newValue: entry.toObject()
+      }]
+    });
+
+    return entry;
+  }
+
+  static async updateScheduleEntry(
+    entryId: string, 
+    updateData: Partial<IScheduleEntry>,
+    userId: string
+  ): Promise<IScheduleEntry | null> {
+    const oldEntry = await ScheduleEntry.findById(entryId);
+    const updatedEntry = await ScheduleEntry.findByIdAndUpdate(
+      entryId,
+      updateData,
+      { new: true }
     );
 
-    return lesson;
+    if (oldEntry && updatedEntry) {
+      // Create change history
+      const changes = Object.keys(updateData).map(field => ({
+        field,
+        oldValue: oldEntry[field as keyof IScheduleEntry],
+        newValue: updatedEntry[field as keyof IScheduleEntry]
+      }));
+
+      await ChangeHistory.create({
+        scheduleEntryId: new Types.ObjectId(entryId),
+        type: 'modification',
+        userId: new Types.ObjectId(userId),
+        timestamp: new Date(),
+        changes
+      });
+    }
+
+    return updatedEntry;
   }
 
-  static async updateLesson(lessonId: string, updateData: Partial<ILesson>): Promise<ILesson | null> {
-    return Lesson.findByIdAndUpdate(lessonId, updateData, { new: true }).exec();
+  static async deleteScheduleEntry(entryId: string, userId: string): Promise<void> {
+    const entry = await ScheduleEntry.findById(entryId);
+    
+    if (entry) {
+      await ChangeHistory.create({
+        scheduleEntryId: entry._id,
+        type: 'cancellation',
+        userId: new Types.ObjectId(userId),
+        timestamp: new Date(),
+        changes: [{
+          field: 'status',
+          oldValue: entry.status,
+          newValue: 'cancelled'
+        }]
+      });
+
+      await ScheduleEntry.findByIdAndDelete(entryId);
+    }
   }
 
-  static async deleteLesson(scheduleId: string, lessonId: string): Promise<void> {
-    await Lesson.findByIdAndDelete(lessonId);
-    await Schedule.findByIdAndUpdate(
-      scheduleId,
-      { $pull: { lessons: new Types.ObjectId(lessonId) } }
-    );
-  }
-
-  static async addTeacherToSchedule(scheduleId: string, teacherData: Partial<ITeacher>): Promise<ITeacher> {
-    const teacher = new Teacher(teacherData);
-    await teacher.save();
-
-    await Schedule.findByIdAndUpdate(
-      scheduleId,
-      { $push: { teachers: teacher._id } }
-    );
-
-    return teacher;
-  }
-
+  // Teacher Availability & Scheduling
   static async checkTeacherAvailability(
     teacherId: string,
     startTime: Date,
     endTime: Date,
-    excludeLessonId?: string
+    excludeEntryId?: string
   ): Promise<boolean> {
     const baseQuery: TeacherReferenceQuery & { $or: TimeRangeQuery[] } = {
       teacherId: new Types.ObjectId(teacherId),
@@ -81,31 +141,84 @@ export class ScheduleService {
       ]
     };
 
-    const query: LessonQuery = excludeLessonId
-      ? { ...baseQuery, _id: { $ne: new Types.ObjectId(excludeLessonId) } }
+    const query: ScheduleEntryQuery = excludeEntryId
+      ? { ...baseQuery, _id: { $ne: new Types.ObjectId(excludeEntryId) } }
       : baseQuery;
 
-    const conflictingLessons = await Lesson.countDocuments(query);
-    return conflictingLessons === 0;
+    const conflictingEntries = await ScheduleEntry.countDocuments(query);
+    return conflictingEntries === 0;
   }
 
   static async getTeacherSchedule(
     teacherId: string,
     startDate: Date,
     endDate: Date
-  ): Promise<ILesson[]> {
-    const timeQuery: LessonQuery = {
-      startTime: { $gte: startDate },
-      endTime: { $lte: endDate },
+  ): Promise<IScheduleEntry[]> {
+    const query: ScheduleEntryQuery = {
       $or: [
         { teacherId: new Types.ObjectId(teacherId) },
-        { substituteTeacherId: new Types.ObjectId(teacherId) }
-      ]
+        { substituteId: new Types.ObjectId(teacherId) }
+      ],
+      startTime: { $gte: startDate },
+      endTime: { $lte: endDate }
     };
 
-    return Lesson.find(timeQuery)
+    return ScheduleEntry.find(query)
       .populate('teacherId')
-      .populate('substituteTeacherId')
+      .populate('substituteId')
+      .populate('scheduleId')
+      .exec();
+  }
+
+  // Substitution Management
+  static async assignSubstitute(
+    entryId: string,
+    substituteId: string,
+    reason: string,
+    userId: string
+  ): Promise<IScheduleEntry | null> {
+    const entry = await ScheduleEntry.findById(entryId);
+    
+    if (!entry) {
+      return null;
+    }
+
+    const updatedEntry = await ScheduleEntry.findByIdAndUpdate(
+      entryId,
+      {
+        substituteId: new Types.ObjectId(substituteId),
+        substitutionReason: reason,
+        status: 'substituted',
+        'notificationsSent.substitute': false
+      },
+      { new: true }
+    );
+
+    if (updatedEntry) {
+      await ChangeHistory.create({
+        scheduleEntryId: entry._id,
+        type: 'substitution',
+        userId: new Types.ObjectId(userId),
+        timestamp: new Date(),
+        changes: [{
+          field: 'substituteId',
+          oldValue: entry.substituteId,
+          newValue: substituteId
+        }]
+      });
+    }
+
+    return updatedEntry;
+  }
+
+  // Change History
+  static async getEntryHistory(entryId: string) {
+    return ChangeHistory.find({
+      scheduleEntryId: new Types.ObjectId(entryId)
+    })
+      .sort({ timestamp: -1 })
+      .populate('userId')
+      .lean()  // Convert to plain JavaScript object
       .exec();
   }
 }
