@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { getMonthDays, formatDayHeader } from '@/lib/utils/date-helpers';

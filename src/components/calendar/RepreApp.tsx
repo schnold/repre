@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect } from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { CalendarEvent } from '@/lib/types/calendar';
@@ -6,72 +8,90 @@ import WeekView from './views/week-view';
 import AgendaView from './views/agenda-view';
 import DateNavigator from './calendar-header/date-navigator';
 import ViewSwitcher from './calendar-header/view-switcher';
+import EventSearchFilter from './calendar-header/event-search-filter';
+import EventModal from './events/event-modal';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
-// Sample test events
+// Sample test events with proper typing
 const testEvents: CalendarEvent[] = [
   {
-    id: '1',
+    id: crypto.randomUUID(),
     title: 'Team Meeting',
-    startTime: new Date(),
-    endTime: new Date(Date.now() + 3600000),
+    startTime: new Date(new Date().setHours(10, 0, 0, 0)),
+    endTime: new Date(new Date().setHours(11, 0, 0, 0)),
     category: 'work',
     location: 'Conference Room A',
-    description: 'Weekly team sync'
+    description: 'Weekly team sync',
+    isRecurring: false
   },
   {
-    id: '2',
-    title: 'Lunch with Client',
-    startTime: new Date(Date.now() + 7200000),
-    endTime: new Date(Date.now() + 10800000),
+    id: crypto.randomUUID(),
+    title: 'Project Review',
+    startTime: new Date(new Date().setHours(14, 0, 0, 0)),
+    endTime: new Date(new Date().setHours(15, 30, 0, 0)),
     category: 'important',
-    location: 'Downtown Cafe',
-    description: 'Project discussion over lunch'
+    location: 'Main Office',
+    description: 'Q1 Project Review',
+    isRecurring: false
   },
   {
-    id: '3',
-    title: 'Gym Session',
-    startTime: new Date(Date.now() + 43200000),
-    endTime: new Date(Date.now() + 46800000),
+    id: crypto.randomUUID(),
+    title: 'Lunch Break',
+    startTime: new Date(new Date().setHours(12, 0, 0, 0)),
+    endTime: new Date(new Date().setHours(13, 0, 0, 0)),
     category: 'personal',
-    location: 'Fitness Center',
-    description: 'Weekly workout routine'
+    isRecurring: true
   }
 ];
 
-const RepreApp: React.FC = () => {
-  const { currentView, addEvent } = useCalendarStore();
+const RepreApp = () => {
+  const { 
+    currentView, 
+    addEvent, 
+    setEventModalOpen, 
+    setModalMode,
+    clearEvents 
+  } = useCalendarStore();
 
   // Initialize test events
   useEffect(() => {
+    // Clear existing events before adding test events
+    clearEvents();
     testEvents.forEach(event => addEvent(event));
-  }, [addEvent]);
+  }, [addEvent, clearEvents]);
 
-  // Render appropriate view based on currentView state
-  const renderView = () => {
-    switch (currentView) {
-      case 'month':
-        return <MonthView />;
-      case 'week':
-        return <WeekView />;
-      case 'agenda':
-        return <AgendaView />;
-      default:
-        return <MonthView />;
-    }
+  const handleCreateEvent = () => {
+    setModalMode('create');
+    setEventModalOpen(true);
   };
 
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Calendar Header */}
       <header className="flex items-center justify-between p-4 border-b">
-        <DateNavigator />
-        <ViewSwitcher />
+        <div className="flex items-center gap-4">
+          <DateNavigator />
+          <Button onClick={handleCreateEvent} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Event
+          </Button>
+        </div>
+        <div className="flex items-center gap-4">
+          <EventSearchFilter />
+          <ViewSwitcher />
+        </div>
       </header>
 
       {/* Calendar Content */}
       <main className="flex-1 overflow-hidden">
-        {renderView()}
+        {currentView === 'month' && <MonthView />}
+        {currentView === 'week' && <WeekView />}
+        {currentView === 'agenda' && <AgendaView />}
       </main>
+
+      {/* Event Modal */}
+      <EventModal />
     </div>
   );
 };

@@ -1,5 +1,4 @@
-import React from 'react';
-import RepreApp from '../components/calendar/RepreApp';
+import RepreApp from '@/components/calendar/RepreApp';
 
 export default function Home() {
   return (

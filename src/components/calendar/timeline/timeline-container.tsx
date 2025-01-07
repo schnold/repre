@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendar-store';

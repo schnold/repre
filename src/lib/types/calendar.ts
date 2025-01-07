@@ -4,17 +4,17 @@ export type EventCategory = 'work' | 'personal' | 'important' | 'other';
 export type RecurringPattern = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface CalendarEvent {
-  id: string;
-  title: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  location?: string;
-  category: EventCategory;
-  isRecurring?: boolean;
-  recurringPattern?: RecurringPattern;
-  color?: string;
-}
+    id: string;
+    title: string;
+    description?: string;
+    startTime: Date;
+    endTime: Date;
+    location?: string;
+    category: EventCategory;
+    isRecurring?: boolean;
+    color?: string;
+  }
+  
 
 export interface DateRange {
   start: Date;

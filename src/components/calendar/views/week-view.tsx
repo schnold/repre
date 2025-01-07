@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { getWeekDays, formatTimeRange } from '@/lib/utils/date-helpers';
