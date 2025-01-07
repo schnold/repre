@@ -21,6 +21,7 @@ interface EventFormData {
   category: EventCategory;
   teacherId?: string;
   substituteTeacherId?:string
+  color?: string;
 }
 
 const EventModal: React.FC = () => {
@@ -37,6 +38,7 @@ const EventModal: React.FC = () => {
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
+    color: "#BFD5FF",
     startTime: new Date().toISOString().slice(0, 16),
     endTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
     location: '',
@@ -137,6 +139,17 @@ const EventModal: React.FC = () => {
               )}
             </div>
           </div>
+
+          <div className="space-y-2">
+          <Label htmlFor="color">Event Color</Label>
+          <Input
+            type="color"
+            id="color"
+            value={formData.color}
+            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+          />
+        </div>
+
           <div className="space-y-2">
             <Label htmlFor="teacher">Teacher</Label>
             <Select

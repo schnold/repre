@@ -31,6 +31,7 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
   const { teachers, addTeacher, updateTeacher } = useTeacherStore();
   const [name, setName] = useState("");
   const [subjects, setSubjects] = useState(""); // comma-separated or however
+  const [color, setColor] = useState("#FFB3BA"); // default or random
 
   // If editing, find the teacher and load their data
   useEffect(() => {
@@ -39,11 +40,13 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
       if (teacherToEdit) {
         setName(teacherToEdit.name);
         setSubjects(teacherToEdit.subjects.join(", "));
+        setColor(teacherToEdit.color); // load existing color
       }
     } else {
       // Reset
       setName("");
       setSubjects("");
+      setColor("#FFB3BA"); // or a random from PASTEL_COLORS
     }
   }, [editingTeacherId, teachers]);
 
@@ -52,6 +55,7 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
     const teacherData = {
       name,
       subjects: subjects.split(",").map((s) => s.trim()),
+      color,
     };
 
     if (editingTeacherId) {
@@ -84,7 +88,15 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
               placeholder="Teacher's Name"
             />
           </div>
-
+          <div className="space-y-2">
+            <Label htmlFor="teacher-color">Color</Label>
+            <Input
+                type="color"
+                id="teacher-color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+            />
+            </div>
           <div className="space-y-2">
             <Label htmlFor="teacher-subjects">Subjects (comma separated)</Label>
             <Textarea

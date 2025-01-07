@@ -9,5 +9,6 @@ interface Availability {
     name: string
     subjects: string[]
     availability?: Availability[]
+    color: string 
   }
   

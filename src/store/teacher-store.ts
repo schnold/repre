@@ -1,45 +1,54 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Teacher } from "@/lib/types/teacher" // <--- import the interface here
+// /src/store/teacher-store.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { Teacher } from '@/lib/types/teacher'
 
+// Example pastel color palette:
+const PASTEL_COLORS = [
+  '#FFB3BA', '#FFDFBA', '#FFFFBA', '#BFFCC6', '#BFD5FF', '#D7BFFF',
+  // add more as desired
+];
 
+function getRandomColor() {
+  return PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
+}
 
 interface TeacherStore {
   teachers: Teacher[];
   addTeacher: (teacherData: Omit<Teacher, 'id'>) => void;
   updateTeacher: (id: string, updatedData: Partial<Teacher>) => void;
   deleteTeacher: (id: string) => void;
-  // Possibly more actions
 }
 
 export const useTeacherStore = create<TeacherStore>()(
-    persist(
-      (set /*, get */) => ({
-        teachers: [],
-        addTeacher: (teacherData) => {
-          const newTeacher: Teacher = {
+  persist(
+    (set) => ({
+      teachers: [],
+      addTeacher: (teacherData) => {
+        const newTeacher: Teacher = {
             id: crypto.randomUUID(),
             ...teacherData,
-          }
-          set((state) => ({
-            teachers: [...state.teachers, newTeacher],
-          }))
-        },
-        updateTeacher: (id, updatedData) => {
-          set((state) => ({
-            teachers: state.teachers.map((teacher) =>
-              teacher.id === id ? { ...teacher, ...updatedData } : teacher
-            ),
-          }))
-        },
-        deleteTeacher: (id) => {
-          set((state) => ({
-            teachers: state.teachers.filter((teacher) => teacher.id !== id),
-          }))
-        },
-      }),
-      {
-        name: "teacher-store",
-      }
-    )
+            color: teacherData.color ?? getRandomColor(), // if teacherData.color is undefined, use a random color
+          };
+        set((state) => ({
+          teachers: [...state.teachers, newTeacher],
+        }))
+      },
+      updateTeacher: (id, updatedData) => {
+        set((state) => ({
+          teachers: state.teachers.map((teacher) =>
+            teacher.id === id ? { ...teacher, ...updatedData } : teacher
+          ),
+        }))
+      },
+      deleteTeacher: (id) => {
+        set((state) => ({
+          teachers: state.teachers.filter((teacher) => teacher.id !== id),
+        }))
+      },
+    }),
+    {
+      name: 'teacher-store',
+    }
   )
+)

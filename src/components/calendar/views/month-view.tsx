@@ -69,11 +69,8 @@ const MonthView: React.FC = () => {
                   <motion.div
                     key={event.id}
                     layoutId={event.id}
-                    className={cn(
-                      "px-2 py-1 text-xs rounded-md truncate",
-                      "bg-primary/10 text-primary",
-                      "hover:bg-primary/20 transition-colors cursor-pointer"
-                    )}
+                    style={{ backgroundColor: event.color || undefined }}
+                    className="px-2 py-1 text-xs rounded-md truncate hover:opacity-80 cursor-pointer"
                   >
                     {event.title}
                   </motion.div>
