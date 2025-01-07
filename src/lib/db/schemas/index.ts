@@ -241,7 +241,7 @@ const ChangeHistorySchema = new Schema<IChangeHistory>({
 }, { timestamps: true });
 
 // Indexes
-UserSchema.index({ auth0Id: 1 });
+
 UserSchema.index({ email: 1 });
 TeacherSchema.index({ organizationId: 1, status: 1 });
 ScheduleSchema.index({ organizationId: 1, academicYear: 1, term: 1 });

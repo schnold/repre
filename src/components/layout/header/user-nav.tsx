@@ -1,7 +1,6 @@
-// src/components/layout/header/user-nav.tsx
 "use client";
 
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useUser } from "@auth0/nextjs-auth0/client";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,12 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  User, 
-  Settings, 
-  LogOut, 
-  Bell
-} from "lucide-react";
+import { User, Settings, LogOut, Bell } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 
 export function UserNav() {
   const { user } = useUser();
@@ -25,51 +21,55 @@ export function UserNav() {
   return (
     <div className="flex items-center gap-4">
       {/* Notifications */}
-      <Button variant="ghost" size="icon">
-        <Bell className="h-4 w-4" />
+      <Button variant="ghost" size="icon" aria-label="Notifications">
+        <Bell className="h-5 w-5" />
       </Button>
 
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Button
+            variant="ghost"
+            className="relative h-8 w-8 rounded-full focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            aria-label="User menu"
+          >
             {user?.picture ? (
-              <img
+              <Image
                 src={user.picture}
-                alt={user.name || 'User avatar'}
-                className="h-8 w-8 rounded-full"
+                alt={user.name || "User avatar"}
+                width={32}
+                height={32}
+                className="rounded-full"
               />
             ) : (
-              <User className="h-4 w-4" />
+              <User className="h-5 w-5" />
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end">
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user?.name}</p>
+              <p className="text-sm font-medium leading-none">
+                {user?.name || "Guest User"}
+              </p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
+                {user?.email || "No email available"}
               </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild className="text-red-600">
-            <a href="/api/auth/logout">
+          <DropdownMenuItem asChild>
+            <Link href="/api/auth/logout" className="text-red-600 flex items-center">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

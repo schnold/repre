@@ -1,11 +1,11 @@
-// src/app/layout.tsx
-import type { Metadata } from "next";
-import { UserProvider } from '@auth0/nextjs-auth0/client';
+// FILE: src/app/layout.tsx
+import { Metadata } from "next";
+import { UserProvider } from "@auth0/nextjs-auth0/client";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Repre - School Representation Plan",
-  description: "Efficiently manage teacher substitutions and class schedules",
+  title: "Repre - Award-Winning App",
+  description: "Manage teacher substitutions with style",
 };
 
 export default function RootLayout({
@@ -15,11 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <UserProvider>
-        <body className="min-h-screen bg-background font-sans antialiased">
-          {children}
-        </body>
-      </UserProvider>
+      <body className="bg-background text-foreground">
+        <UserProvider>{children}</UserProvider>
+      </body>
     </html>
   );
 }
