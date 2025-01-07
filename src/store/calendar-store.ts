@@ -11,34 +11,34 @@ interface CalendarStore extends CalendarState {
   updateDateRange: () => void;
 }
 
-export const useCalendarStore = create<CalendarStore>((set, get) => ({
+export const useCalendarStore = create<CalendarStore>()((set) => ({
   events: [],
   selectedDate: new Date(),
   currentView: 'month',
   dateRange: getDateRange(new Date(), 'month'),
 
-  addEvent: (event) => 
+  addEvent: (event: CalendarEvent) => 
     set((state) => ({ events: [...state.events, event] })),
 
-  updateEvent: (id, updatedEvent) =>
+  updateEvent: (id: string, updatedEvent: Partial<CalendarEvent>) =>
     set((state) => ({
       events: state.events.map((event) =>
         event.id === id ? { ...event, ...updatedEvent } : event
       ),
     })),
 
-  deleteEvent: (id) =>
+  deleteEvent: (id: string) =>
     set((state) => ({
       events: state.events.filter((event) => event.id !== id),
     })),
 
-  setSelectedDate: (date) =>
+  setSelectedDate: (date: Date) =>
     set((state) => {
       const dateRange = getDateRange(date, state.currentView);
       return { selectedDate: date, dateRange };
     }),
 
-  setCurrentView: (view) =>
+  setCurrentView: (view: CalendarView) =>
     set((state) => {
       const dateRange = getDateRange(state.selectedDate, view);
       return { currentView: view, dateRange };

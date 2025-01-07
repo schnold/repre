@@ -10,7 +10,7 @@ const MonthView: React.FC = () => {
   const days = getMonthDays(selectedDate);
 
   const getEventsForDay = (date: Date): CalendarEvent[] => {
-    return events.filter(event => 
+    return events.filter((event: CalendarEvent) => 
       event.startTime.toDateString() === date.toDateString()
     );
   };

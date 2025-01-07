@@ -1,4 +1,4 @@
-import { DayCell, CalendarEvent, DateRange } from '../types/calendar';
+import { DayCell,  DateRange, CalendarView } from '../types/calendar';
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -11,7 +11,9 @@ import {
   addMonths,
   subMonths,
   addWeeks,
-  subWeeks
+  subWeeks,
+  startOfDay,
+  endOfDay
 } from 'date-fns';
 
 export const getMonthDays = (date: Date): DayCell[] => {
@@ -38,28 +40,39 @@ export const getWeekDays = (date: Date): DayCell[] => {
   }));
 };
 
-export const getDateRange = (date: Date, view: 'month' | 'week'): DateRange => {
-  if (view === 'month') {
-    return {
-      start: startOfMonth(date),
-      end: endOfMonth(date)
-    };
+export const getDateRange = (date: Date, view: CalendarView): DateRange => {
+  switch (view) {
+    case 'month':
+      return {
+        start: startOfMonth(date),
+        end: endOfMonth(date)
+      };
+    case 'week':
+      return {
+        start: startOfWeek(date),
+        end: endOfWeek(date)
+      };
+    case 'agenda':
+      return {
+        start: startOfDay(date),
+        end: endOfDay(date)
+      };
   }
-  return {
-    start: startOfWeek(date),
-    end: endOfWeek(date)
-  };
 };
 
 export const navigateDate = (
   date: Date,
-  view: 'month' | 'week',
+  view: CalendarView,
   direction: 'next' | 'previous'
 ): Date => {
-  if (view === 'month') {
-    return direction === 'next' ? addMonths(date, 1) : subMonths(date, 1);
+  switch (view) {
+    case 'month':
+      return direction === 'next' ? addMonths(date, 1) : subMonths(date, 1);
+    case 'week':
+      return direction === 'next' ? addWeeks(date, 1) : subWeeks(date, 1);
+    case 'agenda':
+      return date; // For agenda view, we might want to keep the same date or implement custom navigation
   }
-  return direction === 'next' ? addWeeks(date, 1) : subWeeks(date, 1);
 };
 
 export const formatTimeRange = (start: Date, end: Date): string => {
