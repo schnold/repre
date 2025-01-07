@@ -8,8 +8,8 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useCalendarStore } from '@/store/calendar-store';
 import { useTeacherStore } from '@/store/teacher-store';
-import { CalendarEvent, EventCategory } from '@/lib/types/calendar';
-import { Teacher } from '@/lib/types/teacher';
+import { EventCategory } from '@/lib/types/calendar';
+
 import { AlertCircle, Clock } from 'lucide-react';
 
 interface EventFormData {
@@ -153,11 +153,21 @@ const EventModal: React.FC = () => {
   // Filter out the main teacher from substitute options
   const availableSubstitutes = teachers.filter(t => t.id !== formData.teacherId);
 
-  // Get teacher name helper
-  const getTeacherName = (teacherId?: string) => {
-    if (!teacherId) return '';
+  // Add teacher details display when a teacher is selected
+  const renderTeacherDetails = (teacherId?: string) => {
+    if (!teacherId) return null;
     const teacher = teachers.find(t => t.id === teacherId);
-    return teacher ? teacher.name : '';
+    if (!teacher) return null;
+
+    return (
+      <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+        <div 
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: teacher.color }}
+        />
+        <span>Currently teaching: {teacher.subjects.join(', ')}</span>
+      </div>
+    );
   };
 
   return (
@@ -217,6 +227,7 @@ const EventModal: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            {renderTeacherDetails(formData.teacherId)}
           </div>
 
           <div className="space-y-2">
