@@ -1,11 +1,12 @@
-// FILE: src/app/(app)/dashboard/page.tsx
+// FILE: /src/app/(app)/dashboard/page.tsx
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { AuthDebug } from "@/components/auth/AuthDebug"; // Add this import
 
-// Import your new widgets
+// Import your widgets
 import QuickStats from "@/components/dashboard/overview/quick-stats";
 import RecentActivities from "@/components/dashboard/overview/recent-activities";
 import CalendarWidget from "@/components/dashboard/widgets/calendar-widget";
@@ -15,7 +16,6 @@ export default function DashboardPage() {
   const { user, isLoading } = useUser();
   const router = useRouter();
 
-  // If you only want the actual page to be protected (and not the entire layout)
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login");
@@ -28,6 +28,9 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 space-y-6">
+      {/* Auth Debug Component - only shown in development */}
+      {process.env.NODE_ENV !== 'production' && <AuthDebug />}
+
       <header>
         <h1 className="text-3xl font-bold">Welcome, {user.name || user.email}!</h1>
         <p className="text-muted-foreground">
@@ -35,7 +38,7 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {/* A grid of small widgets, for example */}
+      {/* Dashboard Widgets */}
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <QuickStats />
         <RecentActivities />
@@ -43,7 +46,7 @@ export default function DashboardPage() {
         <NotificationWidget />
       </section>
 
-      {/* Possibly more content or links */}
+      {/* Additional dashboard content */}
       <section className="mt-8">
         <h2 className="text-xl font-semibold mb-4">More Data</h2>
         <p>Explore analytics, settings, etc.</p>

@@ -1,5 +1,3 @@
-"use client";
-
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,18 +12,41 @@ import {
 import { User, Settings, LogOut, Bell } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useCalendarStore } from "@/store/calendar-store";
+import { useTeacherStore } from "@/store/teacher-store";
 
 export function UserNav() {
   const { user } = useUser();
+  const router = useRouter();
+  const resetCalendar = useCalendarStore((state) => state.clearEvents);
+  const resetTeachers = useTeacherStore((state) => state.clearTeachers);
+
+  const handleLogout = async () => {
+    try {
+      // Clear all client-side state before logout
+      resetCalendar();
+      resetTeachers();
+      
+      // Clear any local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Use the Auth0 SDK logout endpoint
+      window.location.assign('/api/auth/logout');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // If logout fails, at least try to redirect to landing
+      router.push('/landing');
+    }
+  };
 
   return (
     <div className="flex items-center gap-4">
-      {/* Notifications */}
       <Button variant="ghost" size="icon" aria-label="Notifications">
         <Bell className="h-5 w-5" />
       </Button>
 
-      {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -59,7 +80,7 @@ export function UserNav() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <Link href="/(app)/settings">
+            <Link href="/settings">
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
@@ -67,11 +88,12 @@ export function UserNav() {
             </Link>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/api/auth/logout" className="text-red-600 flex items-center">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </Link>
+          <DropdownMenuItem 
+            className="text-red-600 focus:text-red-600 cursor-pointer" 
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

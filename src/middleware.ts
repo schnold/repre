@@ -1,71 +1,65 @@
-// src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getSession } from '@auth0/nextjs-auth0/edge';
+import { withMiddlewareAuthRequired, getSession } from '@auth0/nextjs-auth0/edge';
 
-interface RoutePermissions {
-    [key: string]: string[];
+// List of public paths that don't require authentication
+const publicPaths = new Set([
+  '/',
+  '/landing',
+  '/login',
+  '/signup',
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/callback',
+]);
+
+// Helper to check if path is public
+const isPublicPath = (path: string) => {
+  return publicPaths.has(path) ||
+    path.startsWith('/_next') ||
+    path.startsWith('/api/auth') ||
+    path.endsWith('.ico') ||
+    path.endsWith('.png') ||
+    path.endsWith('.svg');
+};
+
+async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+
+  // Allow public paths
+  if (isPublicPath(path)) {
+    return NextResponse.next();
   }
 
-// Define route permissions
-const routePermissions: RoutePermissions = {
-    '/dashboard': ['admin', 'schoolAdmin', 'teacher', 'substitute'],
-    '/calendar': ['admin', 'schoolAdmin', 'teacher'],
-    '/teachers': ['admin', 'schoolAdmin'],
-    '/organizations': ['admin'],
-    '/settings': ['admin', 'schoolAdmin'],
-    '/schedule': ['teacher', 'substitute'],
-    '/substitutions': ['substitute'],
-  };
-
-export default async function middleware(req: NextRequest) {
-    try {
-      // Check if it's a protected route
-      const path = req.nextUrl.pathname;
-      
-      // Allow public routes and static files
-      if (
-        path === '/' ||
-        path.startsWith('/_next') ||
-        path.startsWith('/api/auth') ||
-        path === '/login' ||
-        path === '/register'
-      ) {
-        return NextResponse.next();
-      }
-  
-      // Get the session
-      const session = await getSession();
-      const user = session?.user;
-  
-      // If no user and not on public route, redirect to login
-      if (!user) {
-        return NextResponse.redirect(new URL('/login', req.url));
-      }
-  
-      // Get user roles from Auth0 custom claim
-      const userRoles = (user['https://repre.io/roles'] || []) as string[];
-  
-      // Check if route requires specific roles
-      const requiredRoles = routePermissions[path as keyof typeof routePermissions];
-      if (requiredRoles) {
-        const hasPermission = userRoles.some((role: string) => 
-          requiredRoles.includes(role)
-        );
-        
-        if (!hasPermission) {
-          // Redirect to dashboard if user doesn't have permission
-          return NextResponse.redirect(new URL('/dashboard', req.url));
-        }
-      }
-  
-      return NextResponse.next();
-    } catch (error) {
-      console.error('Middleware error:', error);
+  try {
+    // Get the user session
+    const session = await getSession();
+    
+    // If no session, redirect to login
+    if (!session?.user) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-  }
 
+    // Check user roles if needed
+    const userRoles = session.user['https://repre.io/roles'] || [];
+    
+    // Add any role-based routing logic here
+    // For example:
+    if (path.startsWith('/admin') && !userRoles.includes('admin')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
+}
+
+// Export the middleware with auth required wrapper
+export default withMiddlewareAuthRequired(middleware);
+
+// Configure middleware matching paths
 export const config = {
   matcher: [
     /*

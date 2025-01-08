@@ -18,6 +18,7 @@ interface TeacherStore {
   addTeacher: (teacherData: Omit<Teacher, 'id'>) => void;
   updateTeacher: (id: string, updatedData: Partial<Teacher>) => void;
   deleteTeacher: (id: string) => void;
+  clearTeachers: () => void;
 }
 
 export const useTeacherStore = create<TeacherStore>()(
@@ -46,6 +47,7 @@ export const useTeacherStore = create<TeacherStore>()(
           teachers: state.teachers.filter((teacher) => teacher.id !== id),
         }))
       },
+      clearTeachers: () => set({ teachers: [] }),
     }),
     {
       name: 'teacher-store',

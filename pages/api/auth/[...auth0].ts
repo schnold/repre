@@ -1,35 +1,67 @@
-import { handleAuth, handleLogin, handleLogout } from "@auth0/nextjs-auth0";
+// FILE: /pages/api/auth/[...auth0].ts
+import { 
+  handleAuth, 
+  handleLogin, 
+  handleLogout,
+  handleCallback,
+  Session,
+  
+} from "@auth0/nextjs-auth0";
 import { NextApiRequest, NextApiResponse } from "next";
 
+// Create base handler
 export default handleAuth({
-  // When the user logs in, redirect them to /dashboard
-  login: handleLogin({
-    returnTo: "/dashboard",
-    // optionally pass other authorizationParams
-  }),
+  async login(req: NextApiRequest, res: NextApiResponse) {
+    try {
+      await handleLogin(req, res, {
+        returnTo: "/dashboard",
+        authorizationParams: {
+          prompt: "login",
+        },
+      });
+    } catch (error) {
+      console.error("Login Error:", error);
+      res.status(error instanceof Error ? 500 : 400).end(error instanceof Error ? error.message : "Unknown error");
+    }
+  },
 
-  // When the user signs up, you can send them to /onboarding
-  signup: handleLogin({
-    returnTo: "/onboarding",
-    authorizationParams: {
-      screen_hint: "signup",
-    },
-  }),
+  async signup(req: NextApiRequest, res: NextApiResponse) {
+    try {
+      await handleLogin(req, res, {
+        returnTo: "/onboarding",
+        authorizationParams: {
+          screen_hint: "signup",
+          prompt: "login",
+        },
+      });
+    } catch (error) {
+      console.error("Signup Error:", error);
+      res.status(error instanceof Error ? 500 : 400).end(error instanceof Error ? error.message : "Unknown error");
+    }
+  },
 
-  // Add a custom logout handler that redirects to the Auth0 logout endpoint
   async logout(req: NextApiRequest, res: NextApiResponse) {
     try {
-      // Use handleLogout to clear the session
       await handleLogout(req, res, {
-        returnTo: process.env.AUTH0_BASE_URL,
+        returnTo: `${process.env.AUTH0_BASE_URL}`,
       });
     } catch (error) {
       console.error("Logout Error:", error);
-      if (error instanceof Error) {
-        res.status(500).end("Logout Error: " + error.message);
-      } else {
-        res.status(500).end("An unknown error occurred during logout");
-      }
+      res.status(error instanceof Error ? 500 : 400).end(error instanceof Error ? error.message : "Unknown error");
+    }
+  },
+
+  async callback(req: NextApiRequest, res: NextApiResponse) {
+    try {
+      await handleCallback(req, res, {
+        afterCallback: (_req, _res, session: Session) => {
+          // You can modify the session here if needed
+          return session;
+        },
+      });
+    } catch (error) {
+      console.error("Callback Error:", error);
+      res.status(error instanceof Error ? 500 : 400).end(error instanceof Error ? error.message : "Unknown error");
     }
   },
 });

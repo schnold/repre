@@ -33,7 +33,7 @@ export default function TeachersPage() {
 
   useEffect(() => {
     // role check
-    if (!isLoading && user && !hasRole(["admin", "schoolAdmin"])) {
+    if (!isLoading && user && !hasRole(["admin", "editor"])) {
       router.push("/dashboard");
     } else if (!isLoading && !user) {
       router.push("/login");

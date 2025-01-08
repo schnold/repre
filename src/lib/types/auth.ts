@@ -1,17 +1,18 @@
-// src/lib/types/auth.ts
 import { UserProfile } from '@auth0/nextjs-auth0/client';
 
-export interface Auth0User extends UserProfile {
-  'https://repre.io/roles'?: string[];
-  sub: string;
-  email: string;
-  name?: string;
+export type UserRole = 'admin' | 'editor' | 'viewer';
+
+export interface Auth0UserMetadata {
+  [key: string]: unknown;
 }
 
-export type UserRole = 'admin' | 'schoolAdmin' | 'teacher' | 'substitute';
-
-export interface NavigationItem {
-  name: string;
-  href: string;
-  roles: UserRole[];
+export interface Auth0User extends UserProfile {
+  'https://repre.io/roles'?: UserRole[];
+  email: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+  sub: string;
+  updated_at?: string;
+  user_metadata?: Auth0UserMetadata;
 }

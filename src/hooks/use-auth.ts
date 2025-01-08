@@ -1,21 +1,48 @@
 import { useUser } from '@auth0/nextjs-auth0/client';
+import { useRouter } from 'next/navigation';
+import { useCalendarStore } from '@/store/calendar-store';
+import { useTeacherStore } from '@/store/teacher-store';
+import { Auth0User, UserRole } from '@/lib/types/auth';
 
 export function useAuth() {
-  const { user, error, isLoading } = useUser();
+  const { user: baseUser, error, isLoading } = useUser();
+  const router = useRouter();
+  const resetCalendar = useCalendarStore((state) => state.clearEvents);
+  const resetTeachers = useTeacherStore((state) => state.clearTeachers);
 
-  const roles = user?.['https://repre.io/roles'] as string[] || [];
+  // Cast the user to our extended type
+  const user = baseUser as Auth0User | undefined;
 
-  const hasRole = (requiredRoles: string | string[]): boolean => {
+  // Get roles from user metadata with proper typing
+  const roles: UserRole[] = (user?.['https://repre.io/roles'] || []) as UserRole[];
+  
+  const hasRole = (requiredRoles: UserRole | UserRole[]): boolean => {
     if (!user) return false;
     
     const rolesToCheck = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+    
+    console.log('Role check:', {
+      userEmail: user.email,
+      userRoles: roles,
+      requiredRoles: rolesToCheck,
+      hasMatch: roles.some(role => rolesToCheck.includes(role))
+    });
+
     return roles.some(role => rolesToCheck.includes(role));
   };
 
-  const isAdmin = (): boolean => hasRole('admin');
-  const isSchoolAdmin = (): boolean => hasRole(['admin', 'schoolAdmin']);
-  const isTeacher = (): boolean => hasRole(['admin', 'schoolAdmin', 'teacher']);
-  const isSubstitute = (): boolean => hasRole('substitute');
+  const logout = async () => {
+    try {
+      resetCalendar();
+      resetTeachers();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.assign('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      router.push('/landing');
+    }
+  };
 
   return {
     user,
@@ -23,9 +50,10 @@ export function useAuth() {
     isLoading,
     roles,
     hasRole,
-    isAdmin,
-    isSchoolAdmin,
-    isTeacher,
-    isSubstitute,
+    logout,
+    isAdmin: () => hasRole('admin'),
+    isEditor: () => hasRole(['admin', 'editor']),
+    isViewer: () => hasRole(['admin', 'editor', 'viewer']),
+    
   };
 }
