@@ -47,11 +47,13 @@ export function UserNav() {
         <Bell className="h-5 w-5" />
       </Button>
 
-      <DropdownMenu>
+      <DropdownMenu
+      
+      >
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="relative h-8 w-8 rounded-full focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            className="relative h-8 w-8 rounded-full border border-gray-900 focus:outline-none"
             aria-label="User menu"
           >
             {user?.picture ? (
