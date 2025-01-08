@@ -1,5 +1,6 @@
 // src/lib/db/schemas/index.ts
-import { Schema, model, Document, Types, Model } from 'mongoose';
+import { Schema, model, Document, Types, Model, models } from 'mongoose';
+
 
 // Common Types
 type WorkingHours = {
@@ -259,9 +260,9 @@ export type OrganizationModel = Model<IOrganization>;
 export type ChangeHistoryModel = Model<IChangeHistory>;
 
 // Export models
-export const User = model<IUser>('User', UserSchema);
-export const Teacher = model<ITeacher>('Teacher', TeacherSchema);
-export const Schedule = model<ISchedule>('Schedule', ScheduleSchema);
-export const ScheduleEntry = model<IScheduleEntry>('ScheduleEntry', ScheduleEntrySchema);
-export const Organization = model<IOrganization>('Organization', OrganizationSchema);
-export const ChangeHistory = model<IChangeHistory>('ChangeHistory', ChangeHistorySchema);
+export const User = models.User || model<IUser>('User', UserSchema);
+export const Teacher = models.Teacher || model<ITeacher>('Teacher', TeacherSchema);
+export const Schedule = models.Schedule || model<ISchedule>('Schedule', ScheduleSchema);
+export const ScheduleEntry = models.ScheduleEntry || model<IScheduleEntry>('ScheduleEntry', ScheduleEntrySchema);
+export const Organization = models.Organization || model<IOrganization>('Organization', OrganizationSchema);
+export const ChangeHistory = models.ChangeHistory || model<IChangeHistory>('ChangeHistory', ChangeHistorySchema);

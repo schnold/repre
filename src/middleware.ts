@@ -1,11 +1,12 @@
+// FILE: /src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { withMiddlewareAuthRequired, getSession } from '@auth0/nextjs-auth0/edge';
+import { getSession } from '@auth0/nextjs-auth0/edge';
+import { withMiddlewareAuthRequired } from '@auth0/nextjs-auth0/edge';
 
-// List of public paths that don't require authentication
-const publicPaths = new Set([
+// Define public paths that don't require authentication
+const PUBLIC_PATHS = new Set([
   '/',
-  '/landing',
   '/login',
   '/signup',
   '/api/auth/login',
@@ -13,14 +14,26 @@ const publicPaths = new Set([
   '/api/auth/callback',
 ]);
 
+// Define role requirements for specific paths
+const ROLE_REQUIREMENTS: Record<string, string[]> = {
+  '/admin': ['admin'],
+  '/dashboard/analytics': ['admin', 'editor'],
+  '/teachers': ['admin', 'editor'],
+  '/settings': ['admin']
+};
+
 // Helper to check if path is public
-const isPublicPath = (path: string) => {
-  return publicPaths.has(path) ||
+const isPublicPath = (path: string): boolean => {
+  return PUBLIC_PATHS.has(path) ||
     path.startsWith('/_next') ||
     path.startsWith('/api/auth') ||
-    path.endsWith('.ico') ||
-    path.endsWith('.png') ||
-    path.endsWith('.svg');
+    path.includes('.') || // Static files
+    path.startsWith('/favicon');
+};
+
+// Helper to check user roles
+const hasRequiredRole = (userRoles: string[], requiredRoles: string[]): boolean => {
+  return userRoles.some(role => requiredRoles.includes(role));
 };
 
 async function middleware(req: NextRequest) {
@@ -34,41 +47,44 @@ async function middleware(req: NextRequest) {
   try {
     // Get the user session
     const session = await getSession();
+    const user = session?.user;
     
-    // If no session, redirect to login
-    if (!session?.user) {
+    // If no session/user, redirect to login
+    if (!user) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
 
-    // Check user roles if needed
-    const userRoles = session.user['https://repre.io/roles'] || [];
-    
-    // Add any role-based routing logic here
-    // For example:
-    if (path.startsWith('/admin') && !userRoles.includes('admin')) {
+    // Get user roles
+    const userRoles = (user['https://repre.io/roles'] as string[]) || [];
+
+    // Check role requirements for the path
+    const requiredRoles = ROLE_REQUIREMENTS[path];
+    if (requiredRoles && !hasRequiredRole(userRoles, requiredRoles)) {
+      // If user doesn't have required role, redirect to dashboard
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
-    return NextResponse.next();
+    // Add user info to headers for downstream use
+    const response = NextResponse.next();
+    response.headers.set('x-user-roles', JSON.stringify(userRoles));
+    
+    return response;
+
   } catch (error) {
     console.error('Auth middleware error:', error);
     return NextResponse.redirect(new URL('/login', req.url));
   }
 }
 
-// Export the middleware with auth required wrapper
+// Export wrapped middleware with auth required
 export default withMiddlewareAuthRequired(middleware);
 
 // Configure middleware matching paths
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (Auth0 endpoints)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico
+     * Match all paths except static assets and auth endpoints
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
