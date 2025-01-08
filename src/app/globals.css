@@ -1,26 +1,309 @@
-/* FILE: src/app/globals.css */
+/* Import Sora for headings and Poppins for body text */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Sora:wght@600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* If you used to do @apply border-border for everything, remove or define it. */
-
-/* Example global styling */
-body {
-  /* 
-    Because you have a tailwind color named 'background', you can do:
-    className="bg-background text-foreground"
-    in your layout. 
-    So you might not even need to set body styles here.
-  */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
 }
 
-/* If you really want a "border-border" class, define it in a @layer utilities: */
-/*
-@layer utilities {
-  .border-border {
-    @apply border-gray-200; // or some color
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
   }
 }
-*/
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: 'Poppins', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-event-harness .fc-event {
+  @apply cursor-pointer;
+}
+
+.fc .fc-daygrid-day-frame {
+  @apply min-h-[120px] p-2 bg-background relative hover:bg-muted/50 transition-colors;
+}
+
+.fc .fc-daygrid-day-frame .fc-event {
+  @apply px-2 py-1 text-xs rounded-md truncate cursor-pointer;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-time {
+  @apply font-medium;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title {
+  @apply font-normal;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container {
+  @apply flex-1;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title {
+  @apply block;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-visible {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within {
+  @apply outline-none;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:after {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:before {
+  @apply hidden;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:hover {
+  @apply bg-transparent;
+}
+
+.fc .fc-daygrid-day-frame .fc-event-title-container .fc-event-title-resizer:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:focus-within:active {
+  @apply bg-transparent;
+}
+
+/* Add more modern styling */
+.button {
+  @apply px-4 py-2 rounded-lg transition-colors duration-200 ease-in-out;
+}
+
+.button-primary {
+  @apply bg-blue-500 text-white hover:bg-blue-600;
+}
+
+.button-secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+
+.sidebar {
+  @apply bg-gray-100 p-4 rounded-lg shadow-md;
+}
+
+.sidebar-link {
+  @apply flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors;
+}
+
+.sidebar-link-active {
+  @apply bg-blue-50 text-blue-700 shadow-sm;
+}
+
+.sidebar-link-inactive {
+  @apply text-gray-700 hover:bg-gray-200 hover:shadow-sm;
+}

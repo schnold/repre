@@ -1,4 +1,3 @@
-// FILE: src/components/sidebar/main-sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -24,37 +23,43 @@ export default function MainSidebar() {
       name: "Home",
       href: "/dashboard",
       icon: Home,
-      roles: ["admin", "schoolAdmin", "teacher", "substitute"],
+      roles: ["admin", "editor", "viewer"],
     },
     {
       name: "Calendar",
       href: "/calendar",
       icon: Book,
-      roles: ["admin", "schoolAdmin", "teacher", "substitute"],
+      roles: ["admin", "editor", "viewer"],
     },
     {
       name: "Representation",
       href: "/representation",
       icon: Users,
-      roles: ["admin", "schoolAdmin", "teacher", "substitute"],
+      roles: ["admin", "editor"],
     },
     {
-      name: "Create Teacher",
+      name: "Reports",
+      href: "/reports",
+      icon: BarChart2,
+      roles: ["admin", "editor"],
+    },
+    {
+      name: "Teachers",
       href: "/teachers",
       icon: UserPlus,
-      roles: ["admin", "schoolAdmin"],
+      roles: ["admin"],
     },
     {
       name: "Analytics",
       href: "/dashboard/analytics",
       icon: BarChart2,
-      roles: ["admin", "schoolAdmin", "teacher", "substitute"],
+      roles: ["admin", "editor", "viewer"],
     },
     {
       name: "Settings",
       href: "/settings",
       icon: Settings,
-      roles: ["admin", "schoolAdmin", "teacher", "substitute"],
+      roles: ["admin", "editor", "viewer"],
     },
   ];
 

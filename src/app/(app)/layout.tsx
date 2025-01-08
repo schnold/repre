@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen w-screen flex bg-background text-foreground">
       {/* The left sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r flex-col shadow-lg z-50">
+      <aside className="lg:flex w-64 bg-white border-r flex-col shadow-lg z-50">
         <MainSidebar />
       </aside>
 
