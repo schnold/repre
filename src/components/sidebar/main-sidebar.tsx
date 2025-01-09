@@ -8,6 +8,8 @@ import { UserRole } from "@/lib/types/auth";
 import {
   LayoutDashboard,
   Calendar,
+  UserPlus,
+  Users,
   FileSpreadsheet,
   Settings,
   BarChart2,
@@ -50,6 +52,18 @@ export default function MainSidebar() {
       name: "Representation",
       href: "/representation",
       icon: FileSpreadsheet,
+      roles: ["admin"],
+    },
+    {
+      name: "Teachers",
+      href: "/teachers",
+      icon: UserPlus,
+      roles: ["admin"],
+    },
+    {
+      name: "Substitutions",
+      href: "/substitutions",
+      icon: Users,
       roles: ["admin", "editor"],
     },
     {
