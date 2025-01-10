@@ -8,7 +8,7 @@ import {
   handleCallback,
   AfterCallback,
   Session,
-  
+  UserProfile
 } from '@auth0/nextjs-auth0'
 import { connectToDatabase } from '@/lib/db/mongoose'
 import { User, IUser } from '@/lib/db/schemas'

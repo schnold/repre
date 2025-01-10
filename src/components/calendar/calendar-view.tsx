@@ -11,8 +11,9 @@ import DateNavigator from './calendar-header/date-navigator';
 import ViewSwitcher from './calendar-header/view-switcher';
 import EventSearchFilter from './calendar-header/event-search-filter';
 import EventModal from './events/event-modal';
+import SubjectModal from './subjects/subject-modal';
 import { Button } from '@/components/ui/button';
-import { Plus, Menu } from 'lucide-react';
+import { Plus, Menu, BookOpen } from 'lucide-react';
 import SidebarTabs from './calendar-sidebar/sidebar-tabs';
 import { useCalendarContext } from '@/contexts/calendar-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,6 +29,7 @@ export function CalendarView() {
 
   const { isLoading, error, events } = useCalendarContext();
   const [isSidebarOpen, setSidebarOpen] = React.useState(true);
+  const [isSubjectModalOpen, setSubjectModalOpen] = React.useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const handleCreateEvent = useCallback(() => {
@@ -103,6 +105,15 @@ export function CalendarView() {
               <span className="hidden sm:inline">Create Event</span>
               <span className="sm:hidden">New</span>
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setSubjectModalOpen(true)}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Manage Subjects</span>
+              <span className="sm:hidden">Subjects</span>
+            </Button>
           </div>
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <EventSearchFilter />
@@ -114,7 +125,7 @@ export function CalendarView() {
         <main className="flex-1 min-h-0 bg-background p-4 overflow-auto">
           <AnimatePresence mode="wait">
             <motion.div 
-              key={`${currentView}-${selectedDate.toISOString()}`}
+              key={`${currentView}-${selectedDate.valueOf()}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -131,21 +142,3 @@ export function CalendarView() {
                 <AgendaView />
               )}
             </motion.div>
-          </AnimatePresence>
-        </main>
-
-        {/* Today's Events Summary */}
-        <div className="border-t p-4 bg-muted/10">
-          <div className="text-sm text-muted-foreground">
-            {events.filter(event => 
-              event.startTime.toDateString() === new Date().toDateString()
-            ).length} events today
-          </div>
-        </div>
-      </div>
-
-      {/* Event Modal */}
-      <EventModal />
-    </div>
-  );
-}

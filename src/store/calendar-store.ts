@@ -1,12 +1,18 @@
-"use client";
-
+// src/store/calendar-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {  CalendarEvent, CalendarView, EventCategory } from '@/lib/types/calendar';
+import { CalendarEvent, CalendarView, EventCategory } from '@/lib/types/calendar';
 import { getDateRange } from '@/lib/utils/date-helpers';
+
+export type SubjectType = {
+  id: string;
+  name: string;
+  color: string;
+};
 
 interface FilterState {
   categories: EventCategory[];
+  subjects: string[];
   searchQuery: string;
   dateRange: {
     start: Date | null;
@@ -20,6 +26,7 @@ interface CalendarStore {
   selectedDate: Date;
   currentView: CalendarView;
   dateRange: { start: Date; end: Date };
+  subjects: SubjectType[];
   
   // Filters
   filters: FilterState;
@@ -28,6 +35,11 @@ interface CalendarStore {
   selectedEventId: string | null;
   isEventModalOpen: boolean;
   modalMode: 'create' | 'edit' | 'view';
+
+  // Subject Actions
+  addSubject: (subject: Omit<SubjectType, 'id'>) => void;
+  updateSubject: (id: string, subject: Partial<SubjectType>) => void;
+  deleteSubject: (id: string) => void;
 
   // Event Actions
   addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
@@ -55,9 +67,18 @@ interface CalendarStore {
 
 const defaultFilters: FilterState = {
   categories: ['work', 'personal', 'important', 'other'],
+  subjects: [],
   searchQuery: '',
   dateRange: { start: null, end: null }
 };
+
+const defaultSubjects: SubjectType[] = [
+  { id: '1', name: 'Mathematics', color: '#FFB3BA' },
+  { id: '2', name: 'Physics', color: '#BFFCC6' },
+  { id: '3', name: 'Chemistry', color: '#BFD5FF' },
+  { id: '4', name: 'Biology', color: '#FFDFBA' },
+  { id: '5', name: 'English', color: '#D7BFFF' },
+];
 
 export const useCalendarStore = create<CalendarStore>()(
   persist(
@@ -67,16 +88,42 @@ export const useCalendarStore = create<CalendarStore>()(
       selectedDate: new Date(),
       currentView: 'month',
       dateRange: getDateRange(new Date(), 'month'),
+      subjects: defaultSubjects,
       filters: defaultFilters,
       selectedEventId: null,
       isEventModalOpen: false,
       modalMode: 'view',
+
+      // Subject Management
+      addSubject: (subjectData) => {
+        const subject: SubjectType = {
+          id: crypto.randomUUID(),
+          ...subjectData,
+        };
+        set((state) => ({
+          subjects: [...state.subjects, subject],
+        }));
+      },
+
+      updateSubject: (id, updatedSubject) =>
+        set((state) => ({
+          subjects: state.subjects.map((subject) =>
+            subject.id === id ? { ...subject, ...updatedSubject } : subject
+          ),
+        })),
+
+      deleteSubject: (id) =>
+        set((state) => ({
+          subjects: state.subjects.filter((subject) => subject.id !== id),
+        })),
 
       // Event Management
       addEvent: (eventData) => {
         const event: CalendarEvent = {
           id: crypto.randomUUID(),
           ...eventData,
+          startTime: new Date(eventData.startTime),
+          endTime: new Date(eventData.endTime),
         };
         set((state) => ({
           events: [...state.events, event],
@@ -124,8 +171,8 @@ export const useCalendarStore = create<CalendarStore>()(
       // Navigation
       setSelectedDate: (date) =>
         set((state) => ({
-          selectedDate: date,
-          dateRange: getDateRange(date, state.currentView),
+          selectedDate: new Date(date),
+          dateRange: getDateRange(new Date(date), state.currentView),
         })),
 
       setCurrentView: (view) =>
@@ -151,6 +198,8 @@ export const useCalendarStore = create<CalendarStore>()(
         const state = get();
         return state.events.filter((event) => {
           const matchesCategory = state.filters.categories.includes(event.category);
+          const matchesSubject = state.filters.subjects.length === 0 || 
+            (event.subjectId && state.filters.subjects.includes(event.subjectId));
           const matchesSearch = state.filters.searchQuery
             ? event.title.toLowerCase().includes(state.filters.searchQuery.toLowerCase()) ||
               (event.description?.toLowerCase() || '').includes(
@@ -163,7 +212,7 @@ export const useCalendarStore = create<CalendarStore>()(
                 event.endTime <= state.filters.dateRange.end
               : true;
 
-          return matchesCategory && matchesSearch && matchesDateRange;
+          return matchesCategory && matchesSearch && matchesDateRange && matchesSubject;
         });
       },
 
@@ -175,10 +224,25 @@ export const useCalendarStore = create<CalendarStore>()(
     {
       name: 'calendar-store',
       partialize: (state) => ({
-        events: state.events,
-        selectedDate: state.selectedDate,
+        events: state.events.map(event => ({
+          ...event,
+          startTime: event.startTime.toISOString(),
+          endTime: event.endTime.toISOString(),
+        })),
+        selectedDate: state.selectedDate.toISOString(),
         currentView: state.currentView,
         filters: state.filters,
+        subjects: state.subjects,
+      }),
+      merge: (persistedState: any, currentState) => ({
+        ...currentState,
+        ...persistedState,
+        events: persistedState.events.map((event: any) => ({
+          ...event,
+          startTime: new Date(event.startTime),
+          endTime: new Date(event.endTime),
+        })),
+        selectedDate: new Date(persistedState.selectedDate),
       }),
     }
   )
