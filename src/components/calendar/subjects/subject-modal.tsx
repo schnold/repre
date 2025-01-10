@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { SubjectType, useCalendarStore } from '@/store/calendar-store';
+import { useCalendarStore } from '@/store/calendar-store';
 import { Trash2, Plus } from 'lucide-react';
 import { PASTEL_COLORS } from '@/lib/utils/color-helpers';
 

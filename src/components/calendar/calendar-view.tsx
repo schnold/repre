@@ -18,6 +18,7 @@ import SidebarTabs from './calendar-sidebar/sidebar-tabs';
 import { useCalendarContext } from '@/contexts/calendar-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import DayView from './views/day-view';
 
 export function CalendarView() {
   const { 
@@ -27,7 +28,7 @@ export function CalendarView() {
     selectedDate,
   } = useCalendarStore();
 
-  const { isLoading, error, events } = useCalendarContext();
+  const { isLoading, error } = useCalendarContext();
   const [isSidebarOpen, setSidebarOpen] = React.useState(true);
   const [isSubjectModalOpen, setSubjectModalOpen] = React.useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -132,13 +133,21 @@ export function CalendarView() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {currentView === 'month' && (
-                <MonthView />
-              )}
-              {currentView === 'week' && (
-                <WeekView />
-              )}
-              {currentView === 'agenda' && (
-                <AgendaView />
-              )}
+              {currentView === 'month' && <MonthView />}
+              {currentView === 'week' && <WeekView />}
+              {currentView === 'day' && <DayView />}
+              {currentView === 'agenda' && <AgendaView />}
             </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* Modals */}
+      <EventModal />
+      <SubjectModal 
+        isOpen={isSubjectModalOpen} 
+        onClose={() => setSubjectModalOpen(false)} 
+      />
+    </div>
+  );
+}

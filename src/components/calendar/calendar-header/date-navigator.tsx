@@ -1,23 +1,42 @@
-'use client'
+// src/components/calendar/calendar-header/date-navigator.tsx
+'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { formatFullDate } from '@/lib/utils/date-helpers';
+import { useCalendarContext } from '@/contexts/calendar-context';
 import { useCalendarStore } from '@/store/calendar-store';
-import { navigateDate } from '@/lib/utils/date-helpers';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const DateNavigator = () => {
-  const { selectedDate, currentView, setSelectedDate } = useCalendarStore();
+  const { navigateDate, navigateToToday, selectedDate } = useCalendarContext();
+  const { currentView, setSelectedDate } = useCalendarStore();
 
-  const handleNavigate = (direction: 'next' | 'previous') => {
-    const newDate = navigateDate(selectedDate, currentView, direction);
-    setSelectedDate(newDate);
-  };
-
-  const goToToday = () => {
-    setSelectedDate(new Date());
-  };
+  const dateDisplay = useMemo(() => {
+    switch (currentView) {
+      case 'month':
+        return format(selectedDate, 'MMMM yyyy');
+      case 'week':
+        const weekStart = new Date(selectedDate);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+      case 'day':
+      case 'agenda':
+        return format(selectedDate, 'EEEE, MMMM d, yyyy');
+      default:
+        return formatFullDate(selectedDate);
+    }
+  }, [selectedDate, currentView]);
 
   return (
     <div className="flex items-center gap-4">
@@ -25,29 +44,51 @@ const DateNavigator = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => handleNavigate('previous')}
+          onClick={() => navigateDate('previous')}
           className="hover:bg-muted"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">
-            {formatFullDate(selectedDate)}
-          </h2>
-        </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className={cn(
+                "flex items-center gap-2 font-normal w-auto",
+                "hover:bg-muted px-3"
+              )}
+            >
+              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {dateDisplay}
+              </span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => handleNavigate('next')}
+          onClick={() => navigateDate('next')}
           className="hover:bg-muted"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+
       <Button 
         variant="outline" 
-        onClick={goToToday}
+        size="sm"
+        onClick={navigateToToday}
         className="hidden sm:inline-flex"
       >
         Today
