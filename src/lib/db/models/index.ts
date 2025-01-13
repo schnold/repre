@@ -41,6 +41,21 @@ const teacherSchema = new mongoose.Schema({
 // Add compound unique index for email within organization
 teacherSchema.index({ email: 1, organizationId: 1 }, { unique: true });
 
+// Subject Schema & Model
+const subjectSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  color: { type: String, required: true },
+  description: String,
+  teacherIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }],
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  createdBy: String,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Add compound unique index for name within organization
+subjectSchema.index({ name: 1, organizationId: 1 }, { unique: true });
+
 // User Schema & Model
 const userSchema = new mongoose.Schema({
   auth0Id: { type: String, required: true, unique: true },
@@ -78,6 +93,7 @@ const organizationSchema = new mongoose.Schema({
 
 // Export models
 export const Teacher = mongoose.models.Teacher || mongoose.model('Teacher', teacherSchema);
+export const Subject = mongoose.models.Subject || mongoose.model('Subject', subjectSchema);
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export const Organization = mongoose.models.Organization || mongoose.model('Organization', organizationSchema);
 
@@ -104,6 +120,17 @@ export interface ITeacher extends mongoose.Document {
     preferredDays: number[];
   };
   organizationId: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ISubject extends mongoose.Document {
+  name: string;
+  color: string;
+  description?: string;
+  teacherIds: mongoose.Types.ObjectId[];
+  organizationId: mongoose.Types.ObjectId;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;

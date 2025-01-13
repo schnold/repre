@@ -44,23 +44,10 @@ export function MainSidebar() {
       icon: Calendar,
       path: "/calendar",
     },
-  ];
-
-  const scheduleViews = [
     {
-      title: "Day View",
+      title: "Schedules",
       icon: CalendarClock,
-      path: "/schedule/day",
-    },
-    {
-      title: "Week View",
-      icon: CalendarDays,
-      path: "/schedule/week",
-    },
-    {
-      title: "Month View",
-      icon: CalendarRange,
-      path: "/schedule/month",
+      path: "/schedules",
     },
   ];
 
@@ -69,7 +56,7 @@ export function MainSidebar() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-screen bg-background">
       {/* Main Menu Section */}
       <div className="flex-1 py-6">
         <div className="px-3 space-y-1">
@@ -88,48 +75,9 @@ export function MainSidebar() {
               {item.title}
             </Button>
           ))}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={`w-full justify-start ${
-                  pathname?.startsWith('/schedule') 
-                    ? "bg-primary/10 text-primary hover:bg-primary/20" 
-                    : ""
-                }`}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Schedule
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {scheduleViews.map((view) => (
-                <DropdownMenuItem
-                  key={view.title}
-                  onClick={() => handleNavigation(view.path)}
-                >
-                  <view.icon className="mr-2 h-4 w-4" />
-                  {view.title}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
-
-      {/* Bottom Section with Organization and Settings */}
-      <div className="mt-auto border-t">
-        {/* Organization Selector */}
-        <div className="p-4">
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
-            <Building2 className="h-4 w-4" />
-            <span>Organization</span>
-          </div>
-          <OrganizationSelector />
-        </div>
-
-        {/* Settings */}
+              {/* Settings */}
         <div className="p-3 border-t">
           <Button
             variant="ghost"
@@ -144,6 +92,18 @@ export function MainSidebar() {
             Settings
           </Button>
         </div>
+      {/* Bottom Section with Organization and Settings */}
+      <div className="mt-auto border-t">
+        {/* Organization Selector */}
+        <div className="p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-2">
+            <Building2 className="h-4 w-4" />
+            <span>Organization</span>
+          </div>
+          <OrganizationSelector />
+        </div>
+
+        
       </div>
     </div>
   );

@@ -1,11 +1,15 @@
 // FILE: src/app/layout.tsx
-"use client";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { ClientLayout } from './client-layout';
 
-import { UserProvider } from "@auth0/nextjs-auth0/client";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
-import { Header } from "@/components/header";
-import "./globals.css";
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'Calendar App',
+  description: 'A modern calendar application for managing schedules and events',
+};
 
 export default function RootLayout({
   children,
@@ -14,23 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <UserProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-            </div>
-            <Toaster />
-          </ThemeProvider>
-        </UserProvider>
+      <body className={`${inter.className} dark`} suppressHydrationWarning>
+        <ClientLayout>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );

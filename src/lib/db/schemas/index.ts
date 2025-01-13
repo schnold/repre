@@ -7,6 +7,13 @@ type WorkingHours = {
   end: string;
 };
 
+type Break = {
+  name: string;
+  startTime: string;
+  endTime: string;
+  days: number[];
+};
+
 type NotificationStatus = {
   teacher: boolean;
   substitute?: boolean;
@@ -14,8 +21,8 @@ type NotificationStatus = {
 };
 
 type MetadataRecord = {
-    [key: string]: string | number | boolean | null | undefined;
-  };
+  [key: string]: string | number | boolean | null | undefined;
+};
 
 // Organization Schema - Top level entity
 export interface IOrganization extends Document {
@@ -47,6 +54,9 @@ export interface ISchedule extends Document {
   term: string;
   startDate: Date;
   endDate: Date;
+  workingDays: number[];
+  defaultWorkingHours: WorkingHours;
+  breaks: Break[];
   status: 'draft' | 'active' | 'archived';
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
@@ -181,6 +191,31 @@ const OrganizationSchema = new Schema<IOrganization>({
 });
 
 export const Organization = models.Organization || model<IOrganization>('Organization', OrganizationSchema);
+
+const ScheduleSchema = new Schema<ISchedule>({
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  name: { type: String, required: true },
+  academicYear: { type: String, required: true },
+  term: { type: String, required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  workingDays: { type: [Number], default: [1, 2, 3, 4, 5] }, // Mon-Fri by default
+  defaultWorkingHours: {
+    start: { type: String, default: '08:00' },
+    end: { type: String, default: '16:00' }
+  },
+  breaks: [{
+    name: String,
+    startTime: String,
+    endTime: String,
+    days: [Number]
+  }],
+  status: { type: String, enum: ['draft', 'active', 'archived'], default: 'draft' },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+});
+
+export const Schedule = models.Schedule || model<ISchedule>('Schedule', ScheduleSchema);
 
 export interface ITeacher extends Document {
   userId: Types.ObjectId;

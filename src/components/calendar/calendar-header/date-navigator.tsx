@@ -1,42 +1,51 @@
 // src/components/calendar/calendar-header/date-navigator.tsx
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { formatFullDate } from '@/lib/utils/date-helpers';
-import { useCalendarContext } from '@/contexts/calendar-context';
-import { useCalendarStore } from '@/store/calendar-store';
+import { format, addDays, subDays } from 'date-fns';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const DateNavigator = () => {
-  const { navigateDate, navigateToToday, selectedDate } = useCalendarContext();
-  const { currentView, setSelectedDate } = useCalendarStore();
+interface DateNavigatorProps {
+  date: Date;
+  onDateChange: (date: Date) => void;
+  view: 'day' | 'week' | 'month' | 'agenda';
+}
 
-  const dateDisplay = useMemo(() => {
-    switch (currentView) {
+const DateNavigator = ({ date, onDateChange, view }: DateNavigatorProps) => {
+  const dateDisplay = React.useMemo(() => {
+    switch (view) {
       case 'month':
-        return format(selectedDate, 'MMMM yyyy');
+        return format(date, 'MMMM yyyy');
       case 'week':
-        const weekStart = new Date(selectedDate);
+        const weekStart = new Date(date);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
       case 'day':
       case 'agenda':
-        return format(selectedDate, 'EEEE, MMMM d, yyyy');
+        return format(date, 'EEEE, MMMM d, yyyy');
       default:
-        return formatFullDate(selectedDate);
+        return format(date, 'PPP');
     }
-  }, [selectedDate, currentView]);
+  }, [date, view]);
+
+  const navigateDate = (direction: 'previous' | 'next') => {
+    const days = view === 'month' ? 30 : view === 'week' ? 7 : 1;
+    onDateChange(direction === 'next' ? addDays(date, days) : subDays(date, days));
+  };
+
+  const navigateToToday = () => {
+    onDateChange(new Date());
+  };
 
   return (
     <div className="flex items-center gap-4">
@@ -68,8 +77,8 @@ const DateNavigator = () => {
           <PopoverContent className="w-auto p-0 bg-slate-800/70 backdrop-blur-md" align="start">
             <Calendar
               mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
+              selected={date}
+              onSelect={(newDate) => newDate && onDateChange(newDate)}
               initialFocus
             />
           </PopoverContent>

@@ -27,12 +27,7 @@ export function Header() {
           <span className="tracking-tight">Calendar App</span>
         </Link>
 
-        {/* Organization Selector - Center */}
-        <div className="flex-1 flex justify-center">
-          <div className="w-[200px]">
-            <OrganizationSelector />
-          </div>
-        </div>
+       
 
         {/* User Menu - Right */}
         <div className="flex items-center ">

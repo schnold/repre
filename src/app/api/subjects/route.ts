@@ -1,9 +1,7 @@
-// src/app/api/teachers/route.ts
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
 import { connectToDatabase } from '@/lib/db/mongoose';
-import { Teacher } from '@/lib/db/models';
-import { ITeacher } from '@/lib/db/schemas';
+import { Subject, ISubject } from '@/lib/db/models';
 import { Types } from 'mongoose';
 
 export async function GET(request: Request) {
@@ -21,13 +19,13 @@ export async function GET(request: Request) {
     }
 
     await connectToDatabase();
-    const teachers = await Teacher.find({
+    const subjects = await Subject.find({
       organizationId: new Types.ObjectId(organizationId)
     }).lean();
 
-    return NextResponse.json(teachers);
+    return NextResponse.json(subjects);
   } catch (error) {
-    console.error('Error fetching teachers:', error);
+    console.error('Error fetching subjects:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -42,16 +40,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     await connectToDatabase();
 
-    const teacher = new Teacher({
+    const subject = new Subject({
       ...body,
       organizationId: new Types.ObjectId(body.organizationId),
       createdBy: session.user.sub
     });
 
-    await teacher.save();
-    return NextResponse.json(teacher.toObject());
+    await subject.save();
+    return NextResponse.json(subject.toObject());
   } catch (error) {
-    console.error('Error creating teacher:', error);
+    console.error('Error creating subject:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 
