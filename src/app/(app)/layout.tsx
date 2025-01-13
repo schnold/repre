@@ -4,7 +4,7 @@
 import { ReactNode, useEffect } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
-import MainSidebar from "@/components/sidebar/main-sidebar";
+import { MainSidebar } from "@/components/sidebar/main-sidebar";
 import { UserNav } from "@/components/layout/header/user-nav";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -26,22 +26,26 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen w-screen flex bg-background text-foreground">
-      {/* The left sidebar */}
-      <aside className="lg:flex w-64 bg-white border-r flex-col shadow-lg z-50">
+    <div className="h-screen w-full flex overflow-hidden bg-background">
+      {/* Fixed sidebar */}
+      <aside className="w-64 flex-shrink-0 border-r">
         <MainSidebar />
       </aside>
 
-      {/* Main content area */}
-      <main className="flex-1 flex flex-col">
-        {/* Top bar */}
-        <header className="h-16 flex items-center px-4 bg-brand-500 text-white shadow-md">
-          <div className="flex-1 font-bold text-lg">My Award-Winning App</div>
-          <UserNav />
+      {/* Scrollable main content */}
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Fixed header */}
+        <header className="h-16 flex-shrink-0 border-b bg-background">
+          <div className="flex h-full items-center justify-between px-4">
+            <div className="font-semibold text-lg">Calendar App</div>
+            <UserNav />
+          </div>
         </header>
 
-        {/* The actual page content */}
-        <div className="flex-1 overflow-auto p-6">{children}</div>
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

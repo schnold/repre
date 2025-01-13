@@ -1,87 +1,130 @@
 // src/app/api/teachers/route.ts
 import { NextResponse } from 'next/server';
-import { getSession } from '@auth0/nextjs-auth0';
-import { connectToDatabase } from '@/lib/db/mongoose';
-import { Teacher, Schedule } from '@/lib/db/schemas';
-import { isAdmin } from '@/lib/auth/auth-utils';
+import { getSession, withApiAuthRequired } from '@auth0/nextjs-auth0';
+import { Teacher } from '@/lib/db/models/index';
+import { connectToDatabase } from '@/lib/db/connect';
+import { NextApiRequest, NextApiResponse } from 'next';
+import mongoose from 'mongoose';
 
-export async function POST(request: Request) {
-  try {
-    const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = session.user.sub;
-    if (!await isAdmin(userId)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    await connectToDatabase();
-
-    const data = await request.json();
-    const { scheduleId, ...teacherData } = data;
-
-    // Verify schedule exists and user has access
-    const schedule = await Schedule.findById(scheduleId);
-    if (!schedule) {
-      return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
-    }
-
-    // Create teacher with reference to schedule
-    const teacher = await Teacher.create({
-      ...teacherData,
-      scheduleId,
-      createdBy: userId,
-      status: 'active'
-    });
-
-    return NextResponse.json({ success: true, teacher });
-  } catch (error) {
-    console.error('Error creating teacher:', error);
-    return NextResponse.json(
-      { error: 'Failed to create teacher' },
-      { status: 500 }
-    );
+export const GET = withApiAuthRequired(async function getTeachers(req: Request) {
+  await connectToDatabase();
+  const session = await getSession(req as unknown as NextApiRequest, {} as NextApiResponse);
+  if (!session?.user) {
+    return new NextResponse('Unauthorized', { status: 401 });
   }
-}
 
-export async function GET(request: Request) {
   try {
-    const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { searchParams } = new URL(req.url);
+    const organizationId = searchParams.get('organizationId');
+
+    if (!organizationId) {
+      return new NextResponse('Organization ID is required', { status: 400 });
     }
 
-    await connectToDatabase();
-
-    const { searchParams } = new URL(request.url);
-    const scheduleId = searchParams.get('scheduleId');
-
-    const query: Record<string, unknown> = {};  // Use const with proper typing
-    
-    // If scheduleId is provided, filter by it
-    if (scheduleId) {
-      query.scheduleId = scheduleId;
+    // Validate that organizationId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(organizationId)) {
+      return new NextResponse('Invalid Organization ID format', { status: 400 });
     }
 
-    // Add status filter if provided
-    const status = searchParams.get('status');
-    if (status) {
-      query.status = status;
-    }
+    const teachers = await Teacher.find({ 
+      organizationId: new mongoose.Types.ObjectId(organizationId)
+    })
+    .sort({ name: 1 })
+    .populate('organizationId', 'name'); // Optionally populate organization details
 
-    const teachers = await Teacher
-      .find(query)
-      .populate('scheduleId')
-      .sort({ name: 1 });
-
-    return NextResponse.json({ success: true, teachers });
+    return NextResponse.json(teachers);
   } catch (error) {
     console.error('Error fetching teachers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch teachers' },
-      { status: 500 }
-    );
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
-}
+});
+
+export const POST = withApiAuthRequired(async function createTeacher(req: Request) {
+  await connectToDatabase();
+  const session = await getSession(req as unknown as NextApiRequest, {} as NextApiResponse);
+  
+  if (!session?.user) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
+  try {
+    const data = await req.json();
+    console.log('Received data:', data);
+
+    // Validate required fields
+    if (!data.name) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: { name: 'Teacher name is required' }
+      }, { status: 400 });
+    }
+
+    if (!data.email) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: { email: 'Email is required' }
+      }, { status: 400 });
+    }
+
+    if (!data.organizationId || !mongoose.Types.ObjectId.isValid(data.organizationId)) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: { organizationId: 'Valid organization ID is required' }
+      }, { status: 400 });
+    }
+
+    // Check if email already exists in the same organization
+    const existingTeacher = await Teacher.findOne({ 
+      email: data.email,
+      organizationId: new mongoose.Types.ObjectId(data.organizationId)
+    });
+    
+    if (existingTeacher) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: { email: 'A teacher with this email already exists in this organization' }
+      }, { status: 400 });
+    }
+
+    const teacher = await Teacher.create({
+      ...data,
+      organizationId: new mongoose.Types.ObjectId(data.organizationId),
+      status: 'active',
+      createdBy: session.user.sub,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Populate organization details before sending response
+    await teacher.populate('organizationId', 'name');
+
+    return NextResponse.json(teacher);
+  } catch (error) {
+    console.error('Error creating teacher:', error);
+    
+    if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: { email: 'A teacher with this email already exists' }
+      }, { status: 400 });
+    }
+
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError' && 'errors' in error) {
+      const validationError = error as { errors: { [key: string]: { message: string } } };
+      const details = Object.keys(validationError.errors).reduce((acc: { [key: string]: string }, key) => {
+        acc[key] = validationError.errors[key].message;
+        return acc;
+      }, {});
+      
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: 'Failed to create teacher. Please try again later.'
+    }, { status: 500 });
+  }
+});

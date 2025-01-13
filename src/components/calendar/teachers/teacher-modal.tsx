@@ -1,136 +1,70 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { useTeacherStore } from "@/store/teacher-store";
-
-
+import { TeachersForm } from "./teachers-form";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TeacherModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingTeacherId?: string;
+  organizationId: string;
+  onSuccess?: () => void;
 }
 
-const TeacherModal: React.FC<TeacherModalProps> = ({
-  isOpen,
-  onClose,
-  editingTeacherId,
-}) => {
-  const { teachers, addTeacher, updateTeacher } = useTeacherStore();
-  const [name, setName] = useState("");
-  const [subjects, setSubjects] = useState(""); // comma-separated or however
-  const [color, setColor] = useState("#FFB3BA"); // default or random
+export function TeacherModal({ 
+  isOpen, 
+  onClose, 
+  organizationId,
+  onSuccess 
+}: TeacherModalProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
-  // If editing, find the teacher and load their data
-  useEffect(() => {
-    if (editingTeacherId) {
-      const teacherToEdit = teachers.find((t) => t.id === editingTeacherId);
-      if (teacherToEdit) {
-        setName(teacherToEdit.name);
-        setSubjects(teacherToEdit.subjects.join(", "));
-        setColor(teacherToEdit.color); // load existing color
-      }
-    } else {
-      // Reset
-      setName("");
-      setSubjects("");
-      setColor("#FFB3BA"); // or a random from PASTEL_COLORS
+  const handleSubmit = async (data: any) => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/teachers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create teacher");
+
+      toast({
+        title: "Success",
+        children: "Teacher created successfully",
+      });
+      onClose();
+      onSuccess?.();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        children: "Failed to create teacher",
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [editingTeacherId, teachers]);
-
-  const handleSave = () => {
-    // Build the teacher data
-    const teacherData = {
-      name,
-      subjects: subjects.split(",").map((s) => s.trim()),
-      color,
-    };
-
-    if (editingTeacherId) {
-      // Update existing teacher
-      updateTeacher(editingTeacherId, teacherData);
-    } else {
-      // Add new teacher
-      addTeacher(teacherData);
-    }
-    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[475px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>
-            {editingTeacherId ? "Edit Teacher" : "Add New Teacher"}
-          </DialogTitle>
+          <DialogTitle>Create New Teacher</DialogTitle>
         </DialogHeader>
-
-        {/* Form Inputs */}
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="teacher-name">Name</Label>
-            <Input
-              id="teacher-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Teacher's Name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="teacher-color">Color</Label>
-            <Input
-                type="color"
-                id="teacher-color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-            />
-            </div>
-          <div className="space-y-2">
-            <Label htmlFor="teacher-subjects">Subjects (comma separated)</Label>
-            <Textarea
-              id="teacher-subjects"
-              value={subjects}
-              onChange={(e) => setSubjects(e.target.value)}
-              placeholder="e.g. Math, Physics"
-            />
-          </div>
-
-          {/* Availability fields, if needed */}
-          {/* 
-          <div className="space-y-2">
-            <Label>Availability</Label>
-            <div>
-              Implementation depends on how you want to store availability
-            </div>
-          </div>
-          */}
-        </div>
-
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            {editingTeacherId ? "Update" : "Create"}
-          </Button>
-        </DialogFooter>
-
-        <DialogClose />
+        <TeachersForm onSubmit={handleSubmit} />
       </DialogContent>
     </Dialog>
   );
-};
-
-export default TeacherModal;
+}

@@ -119,14 +119,12 @@ export const useCalendarStore = create<CalendarStore>()(
 
       // Event Management
       addEvent: (eventData) => {
-        const event: CalendarEvent = {
+        const newEvent = {
           id: crypto.randomUUID(),
           ...eventData,
-          startTime: new Date(eventData.startTime),
-          endTime: new Date(eventData.endTime),
         };
         set((state) => ({
-          events: [...state.events, event],
+          events: [...state.events, newEvent],
         }));
       },
 

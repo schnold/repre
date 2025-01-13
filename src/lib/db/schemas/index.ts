@@ -1,6 +1,5 @@
 // src/lib/db/schemas/index.ts
-import { Schema, model, Document, Types, Model, models } from 'mongoose';
-
+import { Schema, model, models, Document, Types } from 'mongoose';
 
 // Common Types
 type WorkingHours = {
@@ -18,78 +17,7 @@ type MetadataRecord = {
     [key: string]: string | number | boolean | null | undefined;
   };
 
-// User Schema
-export interface IUser extends Document {
-  auth0Id: string;
-  email: string;
-  name: string;
-  roles: string[];  
-  organizationId?: Types.ObjectId;
-  lastLogin: Date;
-  settings: {
-    theme?: string;
-    notifications?: {
-      email: boolean;
-      push: boolean;
-    };
-  };
-}
-
-// Teacher Schema
-export interface ITeacher extends Document {
-    userId: Types.ObjectId;
-    organizationId: Types.ObjectId;
-    name: string;
-    email: string;
-    subjects: string[];
-    color: string;
-    availability: Array<{
-      dayOfWeek: number;
-      startTime: string;
-      endTime: string;
-    }>;
-    qualifications?: string[];
-    status: 'active' | 'inactive' | 'substitute';
-    preferredSubstitutes?: Types.ObjectId[];
-    metadata?: MetadataRecord;
-  }
-
-// Schedule Schema
-export interface ISchedule extends Document {
-  organizationId: Types.ObjectId;
-  name: string;
-  description?: string;
-  academicYear: string;
-  term: string;
-  startDate: Date;
-  endDate: Date;
-  defaultWorkingHours: WorkingHours;
-  metadata?: MetadataRecord;
-}
-
-// Schedule Entry Schema
-export interface IScheduleEntry extends Document {
-  scheduleId: Types.ObjectId;
-  teacherId: Types.ObjectId;
-  substituteId?: Types.ObjectId;
-  title: string;
-  startTime: Date;
-  endTime: Date;
-  location?: string;
-  subject: string;
-  class?: string;
-  status: 'scheduled' | 'cancelled' | 'substituted';
-  substitutionReason?: string;
-  notificationsSent: NotificationStatus;
-  recurrence?: {
-    pattern: 'daily' | 'weekly';
-    interval: number;
-    until: Date;
-  };
-  metadata?: MetadataRecord;
-}
-
-// Organization Schema
+// Organization Schema - Top level entity
 export interface IOrganization extends Document {
   name: string;
   type: 'school' | 'district' | 'other';
@@ -97,172 +25,290 @@ export interface IOrganization extends Document {
     timezone: string;
     workingDays: number[];
     defaultWorkingHours: WorkingHours;
+    notifications: NotificationSettings;
+  };
+  subjects: Array<{
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  admins: Types.ObjectId[]; // References to users with admin rights
+  members: Types.ObjectId[]; // References to all organization members
+  createdBy: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Schedule Schema - Belongs to an organization
+export interface ISchedule extends Document {
+  organizationId: Types.ObjectId;
+  name: string;
+  academicYear: string;
+  term: string;
+  startDate: Date;
+  endDate: Date;
+  status: 'draft' | 'active' | 'archived';
+  createdBy: Types.ObjectId;
+  updatedBy: Types.ObjectId;
+}
+
+// Event Schema - Belongs to a schedule
+export interface IEvent extends Document {
+  scheduleId: Types.ObjectId;
+  title: string;
+  subject: string;
+  teacherId: Types.ObjectId;
+  substituteId?: Types.ObjectId;
+  startTime: Date;
+  endTime: Date;
+  location?: string;
+  status: 'scheduled' | 'cancelled' | 'completed' | 'substituted';
+  recurrence?: {
+    pattern: 'daily' | 'weekly';
+    until: Date;
+  };
+  createdBy: Types.ObjectId;
+  createdAt: Date;
+  lastModified: {
+    by: Types.ObjectId;
+    at: Date;
+    reason?: string;
+  };
+}
+
+// Event History - Tracks all changes to events
+export interface IEventHistory extends Document {
+  eventId: Types.ObjectId;
+  scheduleId: Types.ObjectId;
+  organizationId: Types.ObjectId;
+  changeType: 'creation' | 'modification' | 'cancellation' | 'substitution';
+  changes: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }[];
+  changedBy: Types.ObjectId;
+  changedAt: Date;
+  reason?: string;
+}
+
+// User Schema with enhanced role management
+export interface IUser extends Document {
+  auth0Id: string;
+  email: string;
+  name: string;
+  organizations: Array<{
+    organizationId: Types.ObjectId;
+    role: 'admin' | 'teacher' | 'substitute' | 'viewer';
+    joinedAt: Date;
+  }>;
+  preferences: {
+    theme: 'light' | 'dark' | 'system';
     notifications: {
-      emailEnabled: boolean;
-      pushEnabled: boolean;
+      email: boolean;
+      push: boolean;
+      schedule: {
+        changes: boolean;
+        reminders: boolean;
+        substitutions: boolean;
+      };
     };
   };
-  metadata?: MetadataRecord;
+  lastLogin: Date;
 }
 
-// Change History Schema
-export interface IChangeHistory extends Document {
-  scheduleEntryId: Types.ObjectId;
-  type: 'creation' | 'modification' | 'cancellation' | 'substitution';
-  timestamp: Date;
+// Notification Schema
+export interface INotification extends Document {
   userId: Types.ObjectId;
-  changes: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }>;
-  metadata?: MetadataRecord;
+  organizationId: Types.ObjectId;
+  type: 'event_change' | 'schedule_update' | 'substitution_request' | 'system';
+  title: string;
+  message: string;
+  relatedTo?: {
+    type: 'event' | 'schedule' | 'organization';
+    id: Types.ObjectId;
+  };
+  status: 'unread' | 'read' | 'archived';
+  createdAt: Date;
+  readAt?: Date;
 }
 
-// Schema Definitions
-const UserSchema = new Schema<IUser>({
-  auth0Id: { type: String, required: true, unique: true },
-  email: { type: String, required: true },
-  name: { type: String, required: true },
-  roles: { type: [String], default: [] },  // Initialize as empty array by default
-  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
-  lastLogin: { type: Date },
-  settings: {
-    theme: String,
-    notifications: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true }
-    }
-  }
-}, { timestamps: true });
-
-const TeacherSchema = new Schema<ITeacher>({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  subjects: [{ type: String }],
-  color: { type: String, required: true },
-  availability: [{
-    dayOfWeek: Number,
-    startTime: String,
-    endTime: String
-  }],
-  qualifications: [String],
-  status: { 
-    type: String, 
-    enum: ['active', 'inactive', 'substitute'],
-    default: 'active'
-  },
-  preferredSubstitutes: [{ type: Schema.Types.ObjectId, ref: 'Teacher' }],
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
-
-const ScheduleSchema = new Schema<ISchedule>({
-  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
-  name: { type: String, required: true },
-  description: String,
-  academicYear: { type: String, required: true },
-  term: { type: String, required: true },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
-  defaultWorkingHours: {
-    start: String,
-    end: String
-  },
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
-
-const ScheduleEntrySchema = new Schema<IScheduleEntry>({
-  scheduleId: { type: Schema.Types.ObjectId, ref: 'Schedule', required: true },
-  teacherId: { type: Schema.Types.ObjectId, ref: 'Teacher', required: true },
-  substituteId: { type: Schema.Types.ObjectId, ref: 'Teacher' },
-  title: { type: String, required: true },
-  startTime: { type: Date, required: true },
-  endTime: { type: Date, required: true },
-  location: String,
-  subject: { type: String, required: true },
-  class: String,
-  status: {
-    type: String,
-    enum: ['scheduled', 'cancelled', 'substituted'],
-    default: 'scheduled'
-  },
-  substitutionReason: String,
-  notificationsSent: {
-    teacher: { type: Boolean, default: false },
-    substitute: Boolean,
-    timestamp: Date
-  },
-  recurrence: {
-    pattern: { type: String, enum: ['daily', 'weekly'] },
-    interval: Number,
-    until: Date
-  },
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
+interface NotificationSettings {
+  events: {
+    creation: boolean;
+    modification: boolean;
+    cancellation: boolean;
+    reminders: boolean;
+  };
+  substitutions: {
+    requests: boolean;
+    confirmations: boolean;
+    reminders: boolean;
+  };
+  system: {
+    maintenance: boolean;
+    announcements: boolean;
+  };
+  delivery: {
+    email: boolean;
+    push: boolean;
+    inApp: boolean;
+  };
+}
 
 const OrganizationSchema = new Schema<IOrganization>({
   name: { type: String, required: true },
-  type: {
-    type: String,
-    enum: ['school', 'district', 'other'],
-    required: true
-  },
+  type: { type: String, enum: ['school', 'district', 'other'], required: true },
   settings: {
-    timezone: { type: String, default: 'UTC' },
+    timezone: String,
     workingDays: [Number],
     defaultWorkingHours: {
       start: String,
       end: String
     },
-    notifications: {
-      emailEnabled: { type: Boolean, default: true },
-      pushEnabled: { type: Boolean, default: true }
-    }
+    notifications: Schema.Types.Mixed
   },
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
-
-const ChangeHistorySchema = new Schema<IChangeHistory>({
-  scheduleEntryId: { type: Schema.Types.ObjectId, ref: 'ScheduleEntry', required: true },
-  type: {
-    type: String,
-    enum: ['creation', 'modification', 'cancellation', 'substitution'],
-    required: true
-  },
-  timestamp: { type: Date, default: Date.now },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  changes: [{
-    field: String,
-    oldValue: Schema.Types.Mixed,
-    newValue: Schema.Types.Mixed
+  subjects: [{
+    name: String,
+    color: String,
+    description: String
   }],
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
+  admins: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
 
-// Indexes
-
-UserSchema.index({ email: 1 });
-TeacherSchema.index({ organizationId: 1, status: 1 });
-ScheduleSchema.index({ organizationId: 1, academicYear: 1, term: 1 });
-ScheduleEntrySchema.index({ scheduleId: 1, startTime: 1, endTime: 1 });
-ScheduleEntrySchema.index({ teacherId: 1, startTime: 1 });
-ScheduleEntrySchema.index({ substituteId: 1, startTime: 1 });
-ChangeHistorySchema.index({ scheduleEntryId: 1, timestamp: -1 });
-
-// Export model types
-export type UserModel = Model<IUser>;
-export type TeacherModel = Model<ITeacher>;
-export type ScheduleModel = Model<ISchedule>;
-export type ScheduleEntryModel = Model<IScheduleEntry>;
-export type OrganizationModel = Model<IOrganization>;
-export type ChangeHistoryModel = Model<IChangeHistory>;
-
-// Export models
-export const User = models.User || model<IUser>('User', UserSchema);
-export const Teacher = models.Teacher || model<ITeacher>('Teacher', TeacherSchema);
-export const Schedule = models.Schedule || model<ISchedule>('Schedule', ScheduleSchema);
-export const ScheduleEntry = models.ScheduleEntry || model<IScheduleEntry>('ScheduleEntry', ScheduleEntrySchema);
 export const Organization = models.Organization || model<IOrganization>('Organization', OrganizationSchema);
-export const ChangeHistory = models.ChangeHistory || model<IChangeHistory>('ChangeHistory', ChangeHistorySchema);
+
+export interface ITeacher extends Document {
+  userId: Types.ObjectId;
+  organizationId: Types.ObjectId;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  subjects: string[];
+  selectedSubjects: string[];
+  color: string;
+  availability: {
+    dayOfWeek: number;
+    timeSlots: { start: string; end: string }[];
+  }[];
+  qualifications?: string[];
+  role: 'fulltime' | 'parttime' | 'substitute';
+  maxHoursPerWeek: number;
+  status: 'active' | 'inactive' | 'substitute';
+}
+
+export interface IRole extends Document {
+  name: string;
+  organizationId: Types.ObjectId;
+  permissions: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ISubject extends Document {
+  name: string;
+  organizationId: Types.ObjectId;
+  color: string;
+  description?: string;
+  requirements?: {
+    qualifications?: string[];
+    minExperience?: number;
+  };
+  metadata?: Record<string, any>;
+}
+
+export interface ITeacherAvailability extends Document {
+  teacherId: Types.ObjectId;
+  organizationId: Types.ObjectId;
+  regularSchedule: {
+    dayOfWeek: number;
+    timeSlots: Array<{
+      start: string;
+      end: string;
+      preferredSubjects?: string[];
+    }>;
+  }[];
+  exceptions: Array<{
+    date: Date;
+    available: boolean;
+    timeSlots?: Array<{
+      start: string;
+      end: string;
+    }>;
+    reason?: string;
+  }>;
+}
+
+const RoleSchema = new Schema<IRole>({
+  name: { type: String, required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  permissions: [String],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const SubjectSchema = new Schema<ISubject>({
+  name: { type: String, required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  color: { type: String, required: true },
+  description: String,
+  requirements: {
+    qualifications: [String],
+    minExperience: Number
+  },
+  metadata: Schema.Types.Mixed
+});
+
+const TeacherAvailabilitySchema = new Schema<ITeacherAvailability>({
+  teacherId: { type: Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  regularSchedule: [{
+    dayOfWeek: { type: Number, required: true },
+    timeSlots: [{
+      start: { type: String, required: true },
+      end: { type: String, required: true },
+      preferredSubjects: [String]
+    }]
+  }],
+  exceptions: [{
+    date: { type: Date, required: true },
+    available: { type: Boolean, required: true },
+    timeSlots: [{
+      start: String,
+      end: String
+    }],
+    reason: String
+  }]
+});
+
+// Add indexes for better query performance
+RoleSchema.index({ organizationId: 1, name: 1 }, { unique: true });
+SubjectSchema.index({ organizationId: 1, name: 1 }, { unique: true });
+TeacherAvailabilitySchema.index({ teacherId: 1, organizationId: 1 }, { unique: true });
+TeacherAvailabilitySchema.index({ 'exceptions.date': 1 });
+
+export const Role = models.Role || model<IRole>('Role', RoleSchema);
+export const Subject = models.Subject || model<ISubject>('Subject', SubjectSchema);
+export const TeacherAvailability = models.TeacherAvailability || 
+  model<ITeacherAvailability>('TeacherAvailability', TeacherAvailabilitySchema);
+
+const NotificationSchema = new Schema<INotification>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  type: { type: String, enum: ['event_change', 'schedule_update', 'substitution_request', 'system'], required: true },
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  relatedTo: {
+    type: { type: String, enum: ['event', 'schedule', 'organization'] },
+    id: { type: Schema.Types.ObjectId }
+  },
+  status: { type: String, enum: ['unread', 'read', 'archived'], default: 'unread' },
+  createdAt: { type: Date, default: Date.now },
+  readAt: Date
+});
+
+export const Notification = models.Notification || model<INotification>('Notification', NotificationSchema);

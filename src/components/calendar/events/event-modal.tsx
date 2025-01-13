@@ -25,6 +25,7 @@ interface EventFormData {
   isRecurring?: boolean;
 }
 
+
 const EventModal: React.FC = () => {
   const { 
     isEventModalOpen, 
@@ -136,7 +137,7 @@ const EventModal: React.FC = () => {
       location: formData.location,
       category: formData.category,
       teacherId: formData.teacherId,
-      substituteTeacherId: formData.substituteTeacherId,
+      substituteTeacherId: formData.substituteTeacherId === 'none' ? undefined : formData.substituteTeacherId,
       color: formData.color,
       isRecurring: formData.isRecurring
     };
@@ -169,6 +170,67 @@ const EventModal: React.FC = () => {
       </div>
     );
   };
+
+  const TeacherSelect = () => (
+    <div className="space-y-2">
+      <Label htmlFor="teacher">Main Teacher</Label>
+      <Select
+        value={formData.teacherId || undefined}
+        onValueChange={(value) => setFormData({ ...formData, teacherId: value })}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Select a Teacher" />
+        </SelectTrigger>
+        <SelectContent>
+          {teachers.map((teacher) => (
+            <SelectItem 
+              key={teacher.id} 
+              value={teacher.id}
+              className="flex items-center gap-2"
+            >
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: teacher.color }}
+              />
+              {teacher.name} ({teacher.subjects.join(', ')})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const SubstituteSelect = () => (
+    <div className="space-y-2">
+      <Label htmlFor="substitute">Substitute Teacher</Label>
+      <Select
+        value={formData.substituteTeacherId || undefined}
+        onValueChange={(value) => 
+          setFormData({ ...formData, substituteTeacherId: value })
+        }
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="(Optional) Select Substitute" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No Substitute Needed</SelectItem>
+          {availableSubstitutes.map((teacher) => (
+            <SelectItem 
+              key={teacher.id} 
+              value={teacher.id}
+              className="flex items-center gap-2"
+            >
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: teacher.color }}
+              />
+              {teacher.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   return (
     <Dialog open={isEventModalOpen} onOpenChange={setEventModalOpen}>
@@ -242,7 +304,7 @@ const EventModal: React.FC = () => {
                 <SelectValue placeholder="(Optional) Select Substitute" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No Substitute Needed</SelectItem>
+                <SelectItem value="none">No Substitute Needed</SelectItem>
                 {availableSubstitutes.map((teacher) => (
                   <SelectItem 
                     key={teacher.id} 

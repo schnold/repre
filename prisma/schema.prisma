@@ -1,0 +1,21 @@
+model Teacher {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phoneNumber     String?
+  subjects        String[]
+  color           String
+  status          String   @default("active")
+  maxHoursPerDay  Int      @default(8)
+  maxHoursPerWeek Int      @default(40)
+  availability    Json     // Array of day/timeslot objects
+  preferences     Json     // Object with teacher preferences
+  organizationId  String
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+} 

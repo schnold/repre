@@ -8,6 +8,7 @@ import { useCalendarStore } from '@/store/calendar-store';
 import { Button } from '@/components/ui/button';
 import { Calendar, LayoutList, Calendar as CalendarRange, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TeacherModal } from "@/components/teachers/teacher-modal";
 
 const ViewSwitcher = () => {
   const { currentView, setCurrentView } = useCalendarStore();

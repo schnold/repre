@@ -51,23 +51,7 @@ export function UserNav() {
       
       >
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="relative h-8 w-8 rounded-full border border-gray-900 focus:outline-none"
-            aria-label="User menu"
-          >
-            {user?.picture ? (
-              <Image
-                src={user.picture}
-                alt={user.name || "User avatar"}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            ) : (
-              <User className="h-5 w-5" />
-            )}
-          </Button>
+          
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end">
           <DropdownMenuLabel>

@@ -63,7 +63,7 @@ export function CalendarView() {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-slate-950">
       {/* Mobile Sidebar Toggle */}
       {!isDesktop && (
         <Button
@@ -123,7 +123,7 @@ export function CalendarView() {
         </header>
 
         {/* Calendar Content */}
-        <main className="flex-1 min-h-0 bg-background p-4 overflow-auto">
+        <main className="flex-1 min-h-0 bg-slate-950 p-4 overflow-auto">
           <AnimatePresence mode="wait">
             <motion.div 
               key={`${currentView}-${selectedDate.valueOf()}`}

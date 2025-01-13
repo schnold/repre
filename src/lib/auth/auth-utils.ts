@@ -1,19 +1,19 @@
 // src/lib/auth/auth-utils.ts
+import { redirect } from 'next/navigation';
+import { getSession } from '@auth0/nextjs-auth0';
 import { connectToDatabase } from '@/lib/db/mongoose';
 import { User } from '@/lib/db/schemas';
-import { getSession } from '@auth0/nextjs-auth0';
+import { Session } from "next-auth";
 
-
-export async function isAdmin(userId: string): Promise<boolean> {
-  await connectToDatabase();
-  const user = await User.findOne({ auth0Id: userId });
-  return user?.roles.includes('admin') || false;
+export function isAdmin(session: Session | null): boolean {
+  if (!session?.user?.id) return false;
+  return session.user.organizations?.some(
+    (org: { role: string }) => org.role === 'admin'
+  ) ?? false;
 }
 
 export async function checkAuth() {
   const session = await getSession();
-  if (!session) {
-    redirect('/login');
-  }
+  if (!session?.user) redirect('/login');
   return session;
 }

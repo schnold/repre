@@ -48,7 +48,7 @@ const TimelineContainer = () => {
   );
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-6">
+    <div className="h-screen overflow-y-auto p-4 space-y-6">
       <AnimatePresence mode="popLayout">
         {sortedDates.map((date) => (
           <motion.div

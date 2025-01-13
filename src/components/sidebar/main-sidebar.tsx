@@ -1,175 +1,150 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
-import { cn } from "@/lib/utils";
-import { UserRole } from "@/lib/types/auth";
-import {
-  LayoutDashboard,
-  Calendar,
-  UserPlus,
-  Users,
-  FileSpreadsheet,
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useOrganizations } from "@/hooks/use-organizations";
+import { usePathname, useRouter } from "next/navigation";
+import { 
+  Calendar, 
+  Users, 
   Settings,
-  BarChart2,
-  HelpCircle,
-  School,
+  LayoutDashboard,
+  CalendarDays,
+  CalendarRange,
+  CalendarClock,
+  Building2
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { OrganizationSelector } from "@/components/organization-selector";
+import { Separator } from "@/components/ui/separator";
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: React.ElementType;
-  roles: UserRole[];
-}
-
-export default function MainSidebar() {
+export function MainSidebar() {
+  const { currentOrg } = useOrganizations();
   const pathname = usePathname();
-  const { hasRole, user, roles } = useAuth();
+  const router = useRouter();
 
-  // Debug information
-  console.log('MainSidebar Debug:', {
-    user,
-    roles,
-    pathname
-  });
-
-  const navItems: NavItem[] = [
+  const menuItems = [
     {
-      name: "Dashboard",
-      href: "/dashboard",
+      title: "Dashboard",
       icon: LayoutDashboard,
-      roles: ["admin", "editor", "viewer"],
+      path: "/dashboard",
     },
     {
-      name: "Calendar",
-      href: "/calendar",
-      icon: Calendar,
-      roles: ["admin", "editor", "viewer"],
-    },
-    {
-      name: "Representation",
-      href: "/representation",
-      icon: FileSpreadsheet,
-      roles: ["admin"],
-    },
-    {
-      name: "Teachers",
-      href: "/teachers",
-      icon: UserPlus,
-      roles: ["admin"],
-    },
-    {
-      name: "Substitutions",
-      href: "/substitutions",
+      title: "Teachers",
       icon: Users,
-      roles: ["admin", "editor"],
+      path: "/teachers",
     },
     {
-      name: "Reports",
-      href: "/reports",
-      icon: FileSpreadsheet,
-      roles: ["admin", "editor"],
-    },
-    {
-      name: "Analytics",
-      href: "/dashboard/analytics",
-      icon: BarChart2,
-      roles: ["admin", "editor"],
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: Settings,
-      roles: ["admin", "editor"],
-    },
-    {
-      name: "Schools",
-      href: "/schools",
-      icon: School,
-      roles: ["admin"],
+      title: "Calendar",
+      icon: Calendar,
+      path: "/calendar",
     },
   ];
 
-  // If no user yet, show loading state
-  if (!user) {
-    return (
-      <div className="flex flex-col h-full p-4 bg-white text-gray-800">
-        <div className="mb-6">
-          <span className="text-2xl font-extrabold text-brand-600 tracking-tight">
-            Repre
-          </span>
-        </div>
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <div key={n} className="h-10 bg-gray-200 rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const scheduleViews = [
+    {
+      title: "Day View",
+      icon: CalendarClock,
+      path: "/schedule/day",
+    },
+    {
+      title: "Week View",
+      icon: CalendarDays,
+      path: "/schedule/week",
+    },
+    {
+      title: "Month View",
+      icon: CalendarRange,
+      path: "/schedule/month",
+    },
+  ];
+
+  const handleNavigation = (path: string) => {
+    router.push(path);
+  };
 
   return (
-    <nav className="flex flex-col h-full p-4 bg-white text-gray-800">
-      {/* Logo / Brand */}
-      <div className="mb-6">
-        <Link href="/dashboard" className="flex items-center">
-          <span className="text-2xl font-extrabold text-brand-600 tracking-tight">
-            Repre
-          </span>
-        </Link>
-      </div>
-
-      {/* Debug Info - Remove in production */}
-      <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-        <div>User: {user.email}</div>
-        <div>Roles: {roles.length > 0 ? roles.join(', ') : 'No roles'}</div>
-      </div>
-
-      {/* Navigation Items */}
-      <div className="space-y-1 flex-1">
-        {navItems.map((item) => {
-          // Debug each menu item's role check
-          const hasRequiredRole = hasRole(item.roles);
-          console.log(`Menu item "${item.name}"`, {
-            requiredRoles: item.roles,
-            hasRole: hasRequiredRole
-          });
-
-          if (!hasRequiredRole) return null;
-
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-brand-50 text-brand-700 shadow-sm"
-                  : "text-gray-700 hover:bg-gray-100 hover:text-brand-600"
-              )}
+    <div className="flex flex-col h-full bg-background">
+      {/* Main Menu Section */}
+      <div className="flex-1 py-6">
+        <div className="px-3 space-y-1">
+          {menuItems.map((item) => (
+            <Button
+              key={item.title}
+              variant="ghost"
+              className={`w-full justify-start ${
+                pathname === item.path 
+                  ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                  : ""
+              }`}
+              onClick={() => handleNavigation(item.path)}
             >
-              <Icon className="h-5 w-5 shrink-0" />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
+              <item.icon className="mr-2 h-4 w-4" />
+              {item.title}
+            </Button>
+          ))}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start ${
+                  pathname?.startsWith('/schedule') 
+                    ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                    : ""
+                }`}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Schedule
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {scheduleViews.map((view) => (
+                <DropdownMenuItem
+                  key={view.title}
+                  onClick={() => handleNavigation(view.path)}
+                >
+                  <view.icon className="mr-2 h-4 w-4" />
+                  {view.title}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* Help Link at Bottom */}
-      <div className="pt-4 border-t mt-4">
-        <Link
-          href="/help"
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-brand-600 transition-colors"
-        >
-          <HelpCircle className="h-5 w-5 shrink-0" />
-          <span>Help & Support</span>
-        </Link>
+      {/* Bottom Section with Organization and Settings */}
+      <div className="mt-auto border-t">
+        {/* Organization Selector */}
+        <div className="p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-2">
+            <Building2 className="h-4 w-4" />
+            <span>Organization</span>
+          </div>
+          <OrganizationSelector />
+        </div>
+
+        {/* Settings */}
+        <div className="p-3 border-t">
+          <Button
+            variant="ghost"
+            className={`w-full justify-start ${
+              pathname?.startsWith('/settings') 
+                ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                : ""
+            }`}
+            onClick={() => handleNavigation('/settings')}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
+        </div>
       </div>
-    </nav>
+    </div>
   );
 }

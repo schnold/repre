@@ -1,12 +1,11 @@
 // FILE: src/app/layout.tsx
-import { Metadata } from "next";
-import { UserProvider } from "@auth0/nextjs-auth0/client";
-import "./globals.css";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Repre - Award-Winning App",
-  description: "Manage teacher substitutions with style",
-};
+import { UserProvider } from "@auth0/nextjs-auth0/client";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import { Header } from "@/components/header";
+import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -14,9 +13,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-background text-foreground">
-        <UserProvider>{children}</UserProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <UserProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
+            <Toaster />
+          </ThemeProvider>
+        </UserProvider>
       </body>
     </html>
   );

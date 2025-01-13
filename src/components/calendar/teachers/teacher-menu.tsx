@@ -3,11 +3,13 @@
 import React, { useState } from "react";
 import { useTeacherStore } from "@/store/teacher-store";
 import { Button } from "@/components/ui/button";
-import TeacherModal from "./teacher-modal"; // import your TeacherModal
+import { TeacherModal } from "./teacher-modal";
 import { Edit, Trash2, Plus } from "lucide-react";
+import { useOrganizations } from "@/hooks/use-organizations";
 
 export default function TeacherMenu() {
   const { teachers, deleteTeacher } = useTeacherStore();
+  const { currentOrg } = useOrganizations();
 
   // State to open/close the TeacherModal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,11 +71,11 @@ export default function TeacherMenu() {
       </div>
 
       {/* Teacher Modal */}
-      {isModalOpen && (
+      {isModalOpen && currentOrg && (
         <TeacherModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          editingTeacherId={editingTeacherId || undefined}
+          organizationId={currentOrg}
         />
       )}
     </div>

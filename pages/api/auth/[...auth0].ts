@@ -8,10 +8,12 @@ import {
   handleCallback,
   AfterCallback,
   Session,
-  UserProfile
+  Claims
 } from '@auth0/nextjs-auth0'
-import { connectToDatabase } from '@/lib/db/mongoose'
-import { User, IUser } from '@/lib/db/schemas'
+import { connectToDatabase } from '@/lib/db/connect'
+import { User, IUser } from '@/lib/db/models/index'
+
+
 
 function isValidSession(session: Session | null | undefined): session is Session {
   return !!session && !!session.user && typeof session.user.sub === 'string'
@@ -51,7 +53,7 @@ async function syncUserWithDatabase(session: Session): Promise<Session> {
     throw new Error('Invalid user data from database')
   }
 
-  const extendedUser: UserProfile = {
+  const extendedUser: Claims = {
     ...user,
     email: mongoUser.email,
     name: mongoUser.name,

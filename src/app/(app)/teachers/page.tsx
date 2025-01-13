@@ -1,200 +1,193 @@
 // FILE: src/app/(app)/teachers/page.tsx
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from 'react';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useOrganizations } from '@/hooks/use-organizations';
+import { TeacherCard } from '@/components/teachers/teacher-card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { TeacherModal } from "@/components/teachers/teacher-modal";
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
+import { Search, Plus, Filter } from 'lucide-react';
 
-interface TeacherData {
-  _id?: string;
+interface Teacher {
+  _id: string;
   name: string;
-  email?: string;
+  email: string;
+  phoneNumber?: string;
   subjects: string[];
+  status: 'active' | 'inactive' | 'substitute';
   color: string;
+  maxHoursPerDay: number;
+  maxHoursPerWeek: number;
+  availability: {
+    dayOfWeek: number;
+    timeSlots: { start: string; end: string; }[];
+  }[];
+  preferences: {
+    consecutiveHours: number;
+    breakDuration: number;
+    preferredDays: number[];
+  };
+  organizationId: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function TeachersPage() {
+  const { user, isLoading: userLoading } = useUser();
+  const { currentOrg, loading: orgLoading, getCurrentOrganization } = useOrganizations();
   const router = useRouter();
-  const { user, isLoading, hasRole } = useAuth();
-  const [teachers, setTeachers] = useState<TeacherData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // form fields
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [subjects, setSubjects] = useState("");
-  const [color, setColor] = useState("#BFD5FF");
+  const { toast } = useToast();
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    // role check
-    if (!isLoading && user && !hasRole(["admin", "editor"])) {
-      router.push("/dashboard");
-    } else if (!isLoading && !user) {
-      router.push("/login");
+    if (!userLoading && !orgLoading) {
+      fetchTeachers();
     }
-  }, [isLoading, user, hasRole, router]);
+  }, [currentOrg, userLoading, orgLoading]);
 
-  async function fetchTeachers() {
+  const fetchTeachers = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch("/api/teachers");
-      if (!res.ok) throw new Error("Failed to fetch teachers");
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Error fetching teachers");
-      setTeachers(json.teachers);
-    } catch (err) {
-      if (err instanceof Error) setError(err.message);
-      else setError("Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
+      setIsLoading(true);
+      const currentOrgData = getCurrentOrganization();
+      if (!currentOrgData) {
+        console.log('No organization data available');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          children: "No organization selected"
+        });
+        return;
+      }
 
-  useEffect(() => {
-    fetchTeachers();
-  }, []);
-
-  async function handleCreateTeacher() {
-    try {
-      setError(null);
-      const payload = {
-        name,
-        email,
-        subjects: subjects.split(",").map((s) => s.trim()),
-        color,
-      };
-      const res = await fetch("/api/teachers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      console.log('Fetching teachers for organization:', currentOrgData._id);
+      const response = await fetch(`/api/teachers?organizationId=${currentOrgData._id}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response from API:', errorData);
+        throw new Error(errorData.message || 'Failed to fetch teachers');
+      }
+      
+      const data = await response.json();
+      console.log('Fetched teachers:', data);
+      setTeachers(data);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+      toast({
+        variant: "destructive",
+        title: "Error loading teachers",
+        children: error instanceof Error ? error.message : "Failed to load teachers"
       });
-      if (!res.ok) throw new Error("Failed to create teacher");
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Unknown error");
-      // success
-      await fetchTeachers();
-      // clear form
-      setName("");
-      setEmail("");
-      setSubjects("");
-      setColor("#BFD5FF");
-    } catch (err) {
-      if (err instanceof Error) setError(err.message);
-      else setError("Unknown error");
+      setTeachers([]); // Reset teachers on error
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const filteredTeachers = teachers.filter(teacher => 
+    teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.subjects.some(subject => 
+      subject.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
+
+  const handleTeacherAdded = () => {
+    console.log('Teacher added, refreshing list...');
+    fetchTeachers();
+  };
+
+  const handleAddTeacher = () => {
+    const currentOrgData = getCurrentOrganization();
+    if (!currentOrgData) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        children: "Please select an organization first"
+      });
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  if (userLoading || orgLoading) {
+    return (
+      <div className="container mx-auto py-6 flex justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
   }
 
-  if (isLoading || loading) {
-    return <p className="p-4">Loading teacher data...</p>;
-  }
-  if (error) {
-    return <p className="p-4 text-red-500">Error: {error}</p>;
+  const currentOrgData = getCurrentOrganization();
+  if (!currentOrgData) {
+    return (
+      <div className="container mx-auto py-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Loading Organization...</h1>
+        <p className="text-gray-600">Please wait while we load your organization data.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page banner */}
-      <div className="rounded-xl p-6 bg-brand-50 shadow-md">
-        <h1 className="text-2xl font-bold text-brand-800">Manage Teachers</h1>
-        <p className="text-sm text-brand-600">
-          Create and organize teacher profiles in your school.
-        </p>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Teachers</h1>
+        <Button type="button" onClick={handleAddTeacher}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Teacher
+        </Button>
       </div>
 
-      {/* Existing Teachers */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Existing Teachers</h2>
-        {teachers.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            No teachers found. Create the first teacher below!
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search teachers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Button variant="outline">
+          <Filter className="mr-2 h-4 w-4" />
+          Filters
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          <div className="col-span-full flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          </div>
+        ) : filteredTeachers.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            {searchTerm ? "No teachers found matching your search" : "No teachers added yet"}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {teachers.map((t) => (
-              <Card key={t._id || t.name} className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>{t.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {t.email && (
-                    <p className="text-sm text-muted-foreground">{t.email}</p>
-                  )}
-                  <p className="text-sm">
-                    Subjects:{" "}
-                    {t.subjects.length > 0
-                      ? t.subjects.join(", ")
-                      : "No subjects"}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Color:</span>
-                    <div
-                      className="w-4 h-4 rounded-full border"
-                      style={{ backgroundColor: t.color }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          filteredTeachers.map((teacher) => (
+            <TeacherCard key={teacher._id} teacher={teacher} onUpdate={fetchTeachers} />
+          ))
         )}
-      </section>
+      </div>
 
-      {/* Create Teacher Form */}
-      <section>
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Create a New Teacher</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Subjects (comma separated)</Label>
-                <Textarea
-                  value={subjects}
-                  onChange={(e) => setSubjects(e.target.value)}
-                  placeholder="Math, Physics, Chemistry"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <Input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <Button onClick={handleCreateTeacher} className="mt-4">
-              Create Teacher
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+      <TeacherModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        organizationId={currentOrgData._id}
+        onSuccess={handleTeacherAdded}
+      />
     </div>
   );
 }
