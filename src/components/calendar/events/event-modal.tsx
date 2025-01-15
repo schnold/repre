@@ -8,16 +8,18 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useCalendarStore } from '@/store/calendar-store';
 import { useTeacherStore } from '@/store/teacher-store';
-import { EventCategory } from '@/lib/types/calendar';
+import { useSchedule } from '@/hooks/use-schedule';
 
 import { AlertCircle, Clock } from 'lucide-react';
+
+type EventCategory = 'work' | 'personal' | 'meeting';
 
 interface EventFormData {
   title: string;
   description: string;
   startTime: string;
   endTime: string;
-  location: string;
+  room: string;
   category: EventCategory;
   teacherId?: string;
   substituteTeacherId?: string;
@@ -43,7 +45,7 @@ const EventModal: React.FC = () => {
     description: '',
     startTime: new Date().toISOString().slice(0, 16),
     endTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
-    location: '',
+    room: '',
     category: 'work',
     color: "#BFD5FF"
   });
@@ -53,15 +55,15 @@ const EventModal: React.FC = () => {
 
   useEffect(() => {
     if (selectedEventId && modalMode === 'edit') {
-      const event = events.find(e => e.id === selectedEventId);
+      const event = events.find(e => e._id === selectedEventId);
       if (event) {
         setFormData({
           title: event.title,
           description: event.description || '',
           startTime: event.startTime.toISOString().slice(0, 16),
           endTime: event.endTime.toISOString().slice(0, 16),
-          location: event.location || '',
-          category: event.category,
+          room: event.room || '',
+          category: (event.category as EventCategory) || 'work',
           teacherId: event.teacherId,
           substituteTeacherId: event.substituteTeacherId,
           color: event.color || "#BFD5FF",
@@ -75,7 +77,7 @@ const EventModal: React.FC = () => {
         description: '',
         startTime: new Date().toISOString().slice(0, 16),
         endTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
-        location: '',
+        room: '',
         category: 'work',
         color: "#BFD5FF"
       });
@@ -86,7 +88,7 @@ const EventModal: React.FC = () => {
     // Check if teacher has any other events at this time
     return !events.some(event => 
       event.teacherId === teacherId &&
-      event.id !== selectedEventId && // Exclude current event when editing
+      event._id !== selectedEventId && // Exclude current event when editing
       ((event.startTime <= startTime && event.endTime > startTime) ||
        (event.startTime < endTime && event.endTime >= endTime) ||
        (event.startTime >= startTime && event.endTime <= endTime))
@@ -134,16 +136,20 @@ const EventModal: React.FC = () => {
       description: formData.description,
       startTime: new Date(formData.startTime),
       endTime: new Date(formData.endTime),
-      location: formData.location,
-      category: formData.category,
-      teacherId: formData.teacherId,
-      substituteTeacherId: formData.substituteTeacherId === 'none' ? undefined : formData.substituteTeacherId,
+      room: formData.room,
+      teacher: formData.teacherId,
+      substitute: formData.substituteTeacherId === 'none' ? undefined : formData.substituteTeacherId,
       color: formData.color,
-      isRecurring: formData.isRecurring
+      recurring: formData.isRecurring,
+      scheduleId: useSchedule()?.selectedSchedule?._id || '',
+      status: 'active' as const,
+      createdBy: '', // This should come from auth
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     if (modalMode === 'edit' && selectedEventId) {
-      updateEvent(selectedEventId, eventData);
+      updateEvent({ ...eventData, _id: selectedEventId });
     } else {
       addEvent(eventData);
     }
@@ -359,8 +365,8 @@ const EventModal: React.FC = () => {
             <Label htmlFor="location">Location</Label>
             <Input
               id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              value={formData.room}
+              onChange={(e) => setFormData({ ...formData, room: e.target.value })}
               placeholder="e.g., Room 101"
             />
           </div>

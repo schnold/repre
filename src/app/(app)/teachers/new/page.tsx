@@ -11,18 +11,33 @@ import { useOrganizations } from "@/hooks/use-organizations";
 import { SubjectSelector } from "@/components/teachers/subject-selector";
 import { AvailabilityScheduler } from "@/components/teachers/availability-scheduler";
 import { z } from "zod";
-import type { TeacherFormData } from "@/types/teacher";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
+import { useUser } from '@auth0/nextjs-auth0/client';
+
+interface TeacherFormData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  subjects: string[];
+  role: string;
+  maxHoursPerWeek: number;
+  qualifications: string[];
+  availability: {
+    dayOfWeek: number;
+    timeSlots: { start: string; end: string; }[];
+  }[];
+}
 
 const teacherSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phoneNumber: z.string().optional(),
-  subjects: z.array(z.string()).min(1, "At least one subject is required"),
+  subjects: z.array(z.string()),
   role: z.enum(["fulltime", "parttime", "substitute"]),
-  maxHoursPerWeek: z.number().min(1),
-  qualifications: z.array(z.string()).optional(),
+  maxHoursPerWeek: z.number().min(1).max(168),
+  qualifications: z.array(z.string()),
   availability: z.array(z.object({
-    dayOfWeek: z.number(),
+    dayOfWeek: z.number().min(0).max(6),
     timeSlots: z.array(z.object({
       start: z.string(),
       end: z.string()
@@ -34,6 +49,7 @@ export default function NewTeacherPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { currentOrg } = useOrganizations();
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<TeacherFormData>({
     name: "",
@@ -54,9 +70,9 @@ export default function NewTeacherPage() {
       setLoading(true);
       const validatedData = teacherSchema.parse(formData);
 
-      const response = await fetch("/api/teachers", {
+      const response = await fetchWithAuth("/api/teachers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        user,
         body: JSON.stringify({
           ...validatedData,
           organizationId: currentOrg

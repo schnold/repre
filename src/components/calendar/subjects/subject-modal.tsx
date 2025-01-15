@@ -23,6 +23,7 @@ export default function SubjectModal({ isOpen, onClose }: SubjectModalProps) {
   const handleAddSubject = () => {
     if (newSubject.name.trim()) {
       addSubject({
+        id: crypto.randomUUID(),
         name: newSubject.name,
         color: newSubject.color
       });
@@ -31,7 +32,8 @@ export default function SubjectModal({ isOpen, onClose }: SubjectModalProps) {
   };
 
   const handleUpdateColor = (id: string, color: string) => {
-    updateSubject(id, { color });
+    const subject = subjects.find(s => s.id === id);
+    updateSubject(id, { name: subject?.name || '', color });
   };
 
   return (

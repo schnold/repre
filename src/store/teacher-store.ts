@@ -19,6 +19,7 @@ interface TeacherStore {
   updateTeacher: (id: string, updatedData: Partial<Teacher>) => void;
   deleteTeacher: (id: string) => void;
   clearTeachers: () => void;
+  fetchTeachers: () => Promise<void>;
 }
 
 export const useTeacherStore = create<TeacherStore>()(
@@ -48,6 +49,16 @@ export const useTeacherStore = create<TeacherStore>()(
         }))
       },
       clearTeachers: () => set({ teachers: [] }),
+      fetchTeachers: async () => {
+        try {
+          const response = await fetch('/api/teachers');
+          if (!response.ok) throw new Error('Failed to fetch teachers');
+          const data = await response.json();
+          set({ teachers: data });
+        } catch (error) {
+          console.error('Error fetching teachers:', error);
+        }
+      },
     }),
     {
       name: 'teacher-store',

@@ -1,25 +1,28 @@
 // src/lib/types/calendar.ts
+import { IEvent } from '@/lib/db/interfaces';
+
 export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
 export type EventCategory = 'work' | 'personal' | 'important' | 'other';
 export type RecurringPattern = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+export interface DayCell {
+  date: Date;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+}
+
 export interface CalendarEvent {
   id: string;
+  _id?: string;
   title: string;
-  description?: string;
   startTime: Date;
   endTime: Date;
-  location?: string;
-  category: EventCategory;
-  isRecurring?: boolean;
-  recurringPattern?: RecurringPattern;
-  recurringEndDate?: Date;
   color?: string;
+  location?: string;
+  subjectId?: string;
   teacherId?: string;
   substituteTeacherId?: string;
-  subjectId?: string;
-  metadata?: Record<string, unknown>;
 }
 
 export interface DateRange {
@@ -32,19 +35,13 @@ export interface CalendarState {
   selectedDate: Date;
   currentView: CalendarView;
   dateRange: DateRange;
+  subjects: { id: string; name: string; color: string }[];
   filters: {
     categories: EventCategory[];
     search: string;
     teachers: string[];
     subjects: string[];
   };
-}
-
-export interface DayCell {
-  date: Date;
-  isCurrentMonth: boolean;
-  isToday: boolean;
-  events: CalendarEvent[];
 }
 
 export interface EventDragInfo {

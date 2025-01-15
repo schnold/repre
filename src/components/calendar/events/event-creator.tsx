@@ -24,6 +24,7 @@ import { useCalendarStore } from '@/store/calendar-store';
 import { useTeacherStore } from '@/store/teacher-store';
 import { CalendarEvent } from '@/lib/types/calendar';
 import { format } from 'date-fns';
+import { useSchedule } from '@/hooks/use-schedule';
 
 interface EventCreatorProps {
   isOpen: boolean;
@@ -113,11 +114,14 @@ const EventCreator: React.FC<EventCreatorProps> = ({
       description: formData.description,
       startTime: new Date(formData.startTime),
       endTime: new Date(formData.endTime),
-      location: formData.location,
+      room: formData.location,
       category: 'work',
       color: formData.color || subject?.color || teacher?.color,
-      subjectId: formData.subjectId,
-      teacherId: formData.teacherId,
+      scheduleId: useSchedule()?.selectedSchedule?._id || '',
+      status: 'active' as const,
+      createdBy: '', // This should come from auth
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     addEvent(newEvent);

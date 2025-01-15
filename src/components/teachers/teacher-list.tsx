@@ -23,17 +23,33 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { TeacherListItem } from '@/types/teacher';
 import { cn } from "@/lib/utils";
+import { TeacherModal } from "@/components/calendar/teachers/teacher-modal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
+import { useUser } from "@auth0/nextjs-auth0/client";
 
 interface TeacherListProps {
   organizationId: string;
 }
 
+interface Teacher {
+  _id: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive' | 'substitute';
+  subjects: string[];
+}
+
 export function TeacherList({ organizationId }: TeacherListProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [teachers, setTeachers] = useState<TeacherListItem[]>([]);
+  const { user } = useUser();
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTeachers();
@@ -41,7 +57,8 @@ export function TeacherList({ organizationId }: TeacherListProps) {
 
   const fetchTeachers = async () => {
     try {
-      const response = await fetch(`/api/teachers?organizationId=${organizationId}`);
+      if (!user) return;
+      const response = await fetchWithAuth(`/api/organizations/${organizationId}/teachers`, { user });
       if (!response.ok) throw new Error('Failed to fetch teachers');
       const data = await response.json();
       setTeachers(data);
@@ -58,21 +75,18 @@ export function TeacherList({ organizationId }: TeacherListProps) {
 
   const handleStatusChange = async (teacherId: string, status: 'active' | 'inactive' | 'substitute') => {
     try {
-      const response = await fetch(`/api/teachers/${teacherId}/status`, {
+      if (!user) return;
+      const response = await fetchWithAuth(`/api/organizations/${organizationId}/teachers/${teacherId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        user,
         body: JSON.stringify({ status })
       });
 
-      if (!response.ok) throw new Error('Failed to update status');
-
-      setTeachers(prev => 
-        prev.map(teacher => 
-          teacher.id === teacherId 
-            ? { ...teacher, status } 
-            : teacher
-        )
-      );
+      if (!response.ok) throw new Error('Failed to update teacher status');
+      
+      setTeachers(prev => prev.map(teacher => 
+        teacher._id === teacherId ? { ...teacher, status } : teacher
+      ));
 
       toast({
         title: "Success",
@@ -87,106 +101,88 @@ export function TeacherList({ organizationId }: TeacherListProps) {
     }
   };
 
-  const filteredTeachers = teachers.filter(teacher => 
+  const filteredTeachers = teachers.filter(teacher =>
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.email.toLowerCase().includes(searchTerm.toLowerCase())
+    teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.subjects.some(subject =>
+      subject.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'inactive': return 'bg-gray-500';
-      case 'substitute': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
-    }
-  };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search teachers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <Button onClick={() => router.push('/teachers/new')}>
+        <Input
+          placeholder="Search teachers..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+        <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Teacher
         </Button>
       </div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Subjects</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTeachers.map((teacher) => (
-              <TableRow key={teacher.id}>
-                <TableCell>{teacher.name}</TableCell>
-                <TableCell>{teacher.email}</TableCell>
-                <TableCell className="capitalize">{teacher.role}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {teacher.subjects.map((subject) => (
-                      <Badge key={subject} variant="secondary">
-                        {subject}
-                      </Badge>
-                    ))}
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredTeachers.map((teacher) => (
+            <Card key={teacher._id}>
+              <CardHeader>
+                <CardTitle>{teacher.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{teacher.email}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {teacher.subjects.map((subject) => (
+                        <span
+                          key={subject}
+                          className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm"
+                        >
+                          {subject}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={cn(getStatusColor(teacher.status))}>
-                    {teacher.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => router.push(`/teachers/${teacher.id}`)}
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(teacher.id, 'active')}
-                      >
-                        Set Active
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(teacher.id, 'inactive')}
-                      >
-                        Set Inactive
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleStatusChange(teacher.id, 'substitute')}
-                      >
-                        Set as Substitute
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                  <RadioGroup
+                    defaultValue={teacher.status || 'active'}
+                    onValueChange={(value) => handleStatusChange(teacher._id, value as 'active' | 'inactive' | 'substitute')}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="active" id={`active-${teacher._id}`} />
+                      <Label htmlFor={`active-${teacher._id}`}>Active</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="inactive" id={`inactive-${teacher._id}`} />
+                      <Label htmlFor={`inactive-${teacher._id}`}>Inactive</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="substitute" id={`substitute-${teacher._id}`} />
+                      <Label htmlFor={`substitute-${teacher._id}`}>Substitute</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <TeacherModal
+          isOpen={isModalOpen}
+          organizationId={organizationId}
+          onClose={() => {
+            setIsModalOpen(false);
+            fetchTeachers();
+          }}
+        />
+      )}
     </div>
   );
 } 

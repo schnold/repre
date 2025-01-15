@@ -5,17 +5,59 @@ import React, { useMemo } from "react"
 import { useCalendarStore } from "@/store/calendar-store"
 import { useTeacherStore } from "@/store/teacher-store"
 import { CalendarEvent } from "@/lib/types/calendar"
+import { Button } from "@/components/ui/button";
+import { Edit2, Trash2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast"
 
 /**
  * The "Events" tab that shows upcoming events
  * for the current view, grouped or sorted by subject.
  */
 export default function UpcomingEventsTab() {
-  const { getFilteredEvents, currentView } = useCalendarStore()
+  const { getFilteredEvents, currentView, deleteEvent, addEvent, setSelectedEventId, setModalMode, setEventModalOpen } = useCalendarStore()
   const { teachers } = useTeacherStore()
 
   // all events currently visible in the calendar (respecting filters, dateRange, etc.)
-  const events = getFilteredEvents()
+  const events = getFilteredEvents().map(evt => ({
+    ...evt,
+    id: evt._id || crypto.randomUUID(),
+    startTime: new Date(evt.startTime),
+    endTime: new Date(evt.endTime)
+  }));
+
+  const handleEditEvent = (event: any) => {
+    setSelectedEventId(event.id);
+    setModalMode('edit');
+    setEventModalOpen(true);
+  };
+
+  const handleDeleteEvent = async (event: any) => {
+    try {
+      // Delete from database
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete event');
+      }
+
+      // Delete from frontend state
+      deleteEvent(event.id);
+
+      toast({
+        title: "Event Deleted",
+        description: "Successfully deleted event",
+      });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete event",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Sort or group by "subject"
   // - we'll assume each teacher has 1+ subjects, we can pick the first subject, or
@@ -26,8 +68,8 @@ export default function UpcomingEventsTab() {
     events.forEach(evt => {
       let subjectKey = "No Teacher/Subject"
 
-      if (evt.teacherId) {
-        const teacher = teachers.find(t => t.id === evt.teacherId)
+      if (evt.teacher) {
+        const teacher = teachers.find(t => t.id === evt.teacher)
         if (teacher && teacher.subjects.length > 0) {
           subjectKey = teacher.subjects[0] // take first subject
         }
@@ -57,21 +99,41 @@ export default function UpcomingEventsTab() {
             {subjectEvents.map(evt => (
               <div
                 key={evt.id}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors text-sm"
+                className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors text-sm group"
               >
-                <div>
-                  <div className="font-medium">{evt.title}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{evt.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    {evt.startTime.toLocaleString()} - {evt.endTime.toLocaleString()}
+                    {new Date(evt.startTime).toLocaleString()} - {new Date(evt.endTime).toLocaleString()}
                   </div>
                 </div>
-                {evt.color && (
-                  <div
-                    className="w-3 h-3 rounded-full ml-2"
-                    style={{ backgroundColor: evt.color }}
-                    title="Event Color"
-                  />
-                )}
+                <div className="flex items-center gap-1 ml-2">
+                  {evt.color && (
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: evt.color }}
+                      title="Event Color"
+                    />
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleEditEvent(evt)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteEvent(evt)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

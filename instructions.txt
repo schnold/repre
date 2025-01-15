@@ -1,0 +1,239 @@
+Here are the instructions for the project. Please make sure to use existing structures and the existing database schemas or improve or enhance them. Use this file as a reference and save your progress in the process_file.md file.
+
+
+1. Executive Summary
+This application will provide:
+
+Administration & User Management: Allow organization admins to create organizations, register and manage schedules, as well as invite other users (Editors and Viewers) to specific schedules.
+Schedule Visualization: Modern calendar visualization in daily, weekly, and monthly formats with support for zooming, drag-and-drop event creation, and role-based constraints.
+Communication & Notifications: Automatic emails or system notifications to alert relevant users of schedule changes or requests.
+Dashboard & Analytics: Quick overview of current data such as staffing issues, changes required, missing roles, hours worked, or unfilled times.
+The application’s primary goal is to streamline schedule management and ensure the right user has access to the right functions in a clean, modern interface.
+
+2. High-Level Architecture
+2.1 Components
+Frontend (React + TypeScript)
+
+Provides the user interface for schedule visualization, user management, dashboards, etc.
+Backend (TypeScript)
+
+Handles authentication, schedule and user management logic, role-based access control, notifications, and other server-side operations.
+Database (MongoDB)
+
+Stores all persistent data such as organizations, schedules, events, users, roles, and audit logs.
+Notification Service
+
+Sends emails (or in-app notifications) regarding schedule changes, approvals, requests, etc.
+(Note: The above stack components align with your existing TypeScript, MongoDB, and React setup.)
+
+3. Core Features & Requirements
+Below is a feature set intended as a knowledge base and checkpoint for further development.
+
+3.1 Account and User Management
+Admin Account
+
+Description: The highest-level user, responsible for creating organizations, schedules, and inviting other users (Editors, Viewers).
+Actions:
+Create new organizations (e.g., “High School A” or “Company B”).
+Define multiple schedules within an organization (e.g., “Classroom Schedules,” “Employee Shifts,” “Meeting Calendars”).
+Invite Editors and Viewers via email (auto-generated username and password).
+Manage (add, edit, remove) roles, subjects, working times, breaks, holidays, etc.
+Review, approve, or deny changes requested by Editors.
+Editor
+
+Description: A user with elevated permissions to propose or request changes to the schedule (e.g., if they are sick or need to swap times).
+Actions:
+Log in with provided credentials.
+View assigned schedules in read/write mode.
+Request changes for their own events (mark themselves unavailable, request a swap, etc.).
+Receive notifications about changes or approvals.
+Viewer
+
+Description: A user with read-only permissions who can only see the assigned schedule.
+Actions:
+Log in with provided credentials.
+View assigned schedules in read-only mode.
+Get notifications about schedule changes that affect them.
+User Profile Management
+
+Description: Each user has a profile containing personal information, roles, availability, etc.
+Data Points:
+Name, email, roles.
+Work or academic preferences (preferred shifts, classes, times).
+Optional advanced data (vacation, sick leave, etc.).
+3.2 Scheduling & Calendar
+Calendar Views
+
+Daily, Weekly, Monthly: Users can view a schedule in different granularities.
+Vertical Layout: Clean vertical stacking of events within a day, with distinct time slots.
+Columns for Each User: In a schedule, each participant (teacher, employee, etc.) can have a distinct column.
+Zooming & Scaling
+
+Description: Modern zoom functionality to seamlessly scale between daily, weekly, monthly overviews.
+Use Cases:
+A day view with hours that can be “zoomed out” to show a week or month.
+Smooth transitions retaining clear layout and event detail.
+Grid Snapping & Drag-and-Drop
+
+Description: Events can be created or shifted on the calendar using drag-and-drop.
+Benefits: Reduces manual entry errors and speeds up scheduling.
+Implementation:
+Use an approach to “snap” events to standard time intervals (e.g., 15-minute blocks).
+Roles/Subjects
+
+Description: Admin defines roles (e.g., “Math Teacher,” “Cashier,” “Manager”) and subjects or event types (e.g., “Algebra Class,” “Staff Meeting”).
+Usage:
+Consistent labeling of events.
+Ensures roles match the requirements of the event (e.g., “Algebra Class” only assigned to a “Math Teacher”).
+3.3 Notifications and Change Management
+Saving of States
+
+Description: Every change (admin changes or editor requests) is versioned to allow auditing.
+Implementation:
+Store each schedule modification (who made it, when, what changed) in an audit log.
+Notification Workflow
+
+Admin Changes → Affected Users
+When Admin modifies the schedule, relevant users are notified (email or in-app).
+Editor Requests → Admin
+When an Editor requests a schedule change, the Admin is notified, can approve or deny, then triggers a notification to the Editor.
+Viewer Changes
+Not allowed (Viewer is read-only), but they receive notifications if an event involving them changes.
+Overview Emails
+
+Description: Summaries of changes or requests with clear date/time and reason for change.
+Customization:
+Admin can set frequency and detail level (immediate, daily digest, etc.).
+3.4 Dashboards & Analytics
+Dashboard
+
+Description: A central view for the Admin (or another privileged role) to see critical data:
+Total hours scheduled per user (teacher or employee workload).
+Unfilled or conflicting time slots (“Presenter missing,” “Shift not staffed”).
+Pending change requests from Editors.
+Upcoming holidays/breaks impacting scheduling.
+Benefits: Enables quick detection of scheduling issues or conflicts.
+Advanced Analytics (Optional/Phase 2)
+
+Description: Deeper insight such as time distribution, historical changes, compliance with labor or academic regulations, etc.
+3.5 Organization Configuration
+Dynamic Organization Setup
+
+Description: Admin sets custom working times, breaks, holiday calendars.
+Examples:
+A school with default working day from 8:00–16:00 plus a lunch break from 12:00–13:00.
+A business with rotating 24-hour shifts.
+In-Depth Role System
+
+Description: Allows fine-grained role creation (e.g., “Full-Time Teacher,” “Part-Time Teacher,” “Intern,” “Volunteer”).
+Permissions:
+Different maximum hours, notifications, or schedule editing rights based on role.
+3.6 Security & Privacy
+Authentication & Authorization
+
+Description: Secure login mechanism (e.g., token-based or session-based).
+User Roles: Strict separation of Admin, Editor, and Viewer privileges.
+Encrypted Data
+
+Description: Use SSL/TLS for data in transit, hashed passwords in the database.
+Optional: Further encryption at rest for highly sensitive information.
+Audit Logs
+
+Description: Track all major actions (logins, schedule changes, role creation) for compliance and debugging.
+4. Use Cases
+Admin Creates a New Organization
+
+Flow: Admin logs in → Creates organization → Sets up default times, breaks → Invites users → Creates roles → Configures schedules.
+Admin Creates a Schedule & Invites Editors
+
+Flow: Admin selects organization → Creates schedule (“Winter Semester 2025” or “Q1 Shift Roster”) → Defines roles → Adds Editors/Viewers → Automated invite emails.
+Editor Requests a Change
+
+Flow: Editor logs in → Views personal schedule → Drags an event to a new time or marks themselves unavailable → System logs request → Admin is notified → Admin approves/denies → Editor receives update.
+Viewer Checks a Schedule
+
+Flow: Viewer receives credentials → Logs in → Views assigned schedule in read-only mode → Receives notifications if their events change.
+Admin Adjusts Schedule
+
+Flow: Admin notices missing role → Drags in available user → System sends notification to that user → Confirmation recorded.
+5. Technical Requirements (Specific to Your Existing Stack)
+Frontend (React + TypeScript)
+
+Provides an intuitive, responsive UI for creating, viewing, and modifying schedules.
+Integrates calendar components (day/week/month views, drag-and-drop).
+Handles user login, dashboards, and role-based conditional rendering.
+Backend (TypeScript)
+
+Provides secure endpoints for:
+Organization creation and management.
+Schedule and event CRUD (create, read, update, delete).
+Role & user management.
+Notification triggers.
+Integrates with MongoDB for data persistence.
+Database (MongoDB)
+
+Stores documents for organizations, schedules, events, users, roles, and audit logs.
+Enables flexible schema for storing custom fields like roles, subjects, or advanced scheduling data.
+Notification Service
+
+Sends emails via SMTP or a third-party service (like SendGrid).
+Manages user-specific notification preferences (immediate, daily digest, etc.).
+6. Implementation Roadmap & Milestones
+Phase 1: Core Scheduling & User Management
+
+Admin creation of organizations.
+Basic CRUD for schedules and events in MongoDB.
+Automated email invitations for Editors and Viewers.
+Day/week/month calendar view with drag-and-drop.
+Simple email notifications for schedule changes.
+Phase 2: Roles, Organization Configuration & Dashboard
+
+Role-based constraints (e.g., only a “Math Teacher” can handle a “Math Class”).
+Dashboard to show missing roles, pending requests, total hours, etc.
+Enhanced admin interface for breaks, holidays, and multiple shift types.
+Phase 3: Enhanced Notifications & Analytics
+
+Summaries of changes (daily digests, in-app notifications).
+Editor request workflow improvements (approve/deny with reason).
+Audit logs to track all changes.
+Basic analytics: usage stats, conflict tracking, potential labor or academic compliance checks.
+Phase 4: Extensions & Integration
+
+Integration with external systems (HR software, SIS for schools, payroll, etc.).
+Dedicated mobile app (if required) or Progressive Web App features for push notifications.
+Advanced scheduling automation or AI-based suggestions for filling open slots.
+7. Testing & Quality Assurance
+Unit Tests
+
+For each service (e.g., user management, schedule manipulation, notifications).
+Integration Tests
+
+Confirm that API endpoints correctly communicate with MongoDB and the React frontend.
+UI/UX Testing
+
+Ensure the calendar drag-and-drop and day/week/month transitions are smooth.
+Verify role-based access flows (Editor vs. Viewer vs. Admin).
+Performance Testing
+
+Validate that large organizations (hundreds of users, thousands of events) can still render efficiently.
+User Acceptance Testing (UAT)
+
+Pilot tests in a real organization or staging environment to collect feedback.
+8. Security & Compliance
+Role-Based Access Control: Strictly enforce Admin, Editor, Viewer privileges in the backend.
+Encryption: Use HTTPS for data in transit; store passwords securely (bcrypt or similar).
+Data Privacy: Comply with relevant regulations (GDPR, HIPAA, etc.) if dealing with sensitive data.
+Logging & Auditing: Track critical user actions (schedule changes, login attempts) for accountability.
+9. Potential Future Enhancements
+Mobile Push Notifications
+
+Real-time schedule updates without relying solely on email.
+Resource Management
+
+Manage rooms, equipment, or other resources in addition to personnel.
+API for External Integrations
+
+Single sign-on (SSO), payroll integration, or direct linking to SIS (Student Information System).
+AI Recommendation Engine
+
+Automatically suggest the best-fit staff or teachers for open slots based on historical data and preferences.

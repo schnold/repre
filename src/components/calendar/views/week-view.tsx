@@ -133,10 +133,14 @@ const WeekView: React.FC = () => {
         {/* Days Grid */}
         <div className="grid grid-cols-7 gap-px bg-muted">
           {weekDays.map((day: DayCell) => {
-            const dayEvents = weekEvents.filter(
-              (event) =>
-                event.startTime.toDateString() === day.date.toDateString()
-            );
+            const dayEvents = events
+              .map(event => ({
+                ...event,
+                id: event._id?.toString() || crypto.randomUUID(),
+                startTime: new Date(event.startTime),
+                endTime: new Date(event.endTime)
+              }))
+              .filter(event => event.startTime.toDateString() === day.date.toDateString());
             const layoutEvents = layoutEventsForDay(dayEvents);
 
             return (

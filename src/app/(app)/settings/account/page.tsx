@@ -5,13 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TimezoneSelect } from '@/components/timezone-select';
+import { TimezoneSelect } from '@/components/ui/timezone-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 
 interface OrganizationSettings {
   name: string;
-  type: 'school' | 'district' | 'other';
+  type: string;
   settings: {
     timezone: string;
     workingDays: number[];
@@ -28,6 +30,7 @@ interface OrganizationSettings {
 
 export default function OrganizationSettings() {
   const { toast } = useToast();
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<OrganizationSettings>({
     name: '',
@@ -51,9 +54,9 @@ export default function OrganizationSettings() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/settings/organization', {
+      const response = await fetchWithAuth('/api/settings/organization', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        user,
         body: JSON.stringify(settings),
       });
 

@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getContrastColor } from '@/lib/utils/color-helpers';
+import { EventMenu } from "@/components/calendar/events/event-menu";
+import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "@/components/ui/use-toast";
 
 const MonthView: React.FC = () => {
   const { 
@@ -29,7 +32,9 @@ const MonthView: React.FC = () => {
     setEventModalOpen, 
     setModalMode,
     setSelectedDate,
-    subjects 
+    subjects,
+    deleteEvent,
+    addEvent 
   } = useCalendarStore();
 
   const { teachers } = useTeacherStore();
@@ -52,9 +57,17 @@ const MonthView: React.FC = () => {
   };
 
   const getEventsForDay = (date: Date): CalendarEvent[] => {
-    return events.filter((event: CalendarEvent) => 
-      event.startTime.toDateString() === date.toDateString()
-    ).sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    return events
+      .map(event => ({
+        ...event,
+        id: event._id?.toString() || crypto.randomUUID(),
+        startTime: new Date(event.startTime),
+        endTime: new Date(event.endTime)
+      }))
+      .filter((event) => 
+        event.startTime.toDateString() === date.toDateString()
+      )
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   };
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
@@ -70,6 +83,46 @@ const MonthView: React.FC = () => {
     setEventModalOpen(true);
   };
 
+  const handleUpdateEvent = (eventId: string, updates: Partial<any>) => {
+    const event = events.find(e => e._id === eventId);
+    if (!event) return;
+
+    const updatedEvent = {
+      ...event,
+      ...updates,
+    };
+    deleteEvent(eventId);
+    addEvent(updatedEvent);
+  };
+
+  const handleDeleteEvent = async (event: any) => {
+    try {
+      // Delete from database
+      const response = await fetch(`/api/events/${event._id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete event');
+      }
+
+      // Delete from frontend state
+      deleteEvent(event._id);
+
+      toast({
+        title: "Event Deleted",
+        description: "Successfully deleted event",
+      });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete event",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderEventCard = (event: CalendarEvent) => {
     const teacher = getTeacherInfo(event.teacherId);
     const substitute = getTeacherInfo(event.substituteTeacherId);
@@ -79,64 +132,38 @@ const MonthView: React.FC = () => {
     const textColor = getContrastColor(backgroundColor);
 
     return (
-      <TooltipProvider key={event.id}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.div
-              layoutId={event.id}
-              onClick={(e) => handleEventClick(event, e)}
-              className={cn(
-                "px-2 py-1 text-xs rounded-md truncate cursor-pointer",
-                "hover:opacity-80 transition-opacity",
-                "flex items-center gap-1 group"
-              )}
-              style={{ 
-                backgroundColor,
-                color: textColor
-              }}
-            >
-              <span className="truncate flex-1">{event.title}</span>
-              {hasSubstitute ? (
-                <UserCheck className="h-3 w-3 flex-shrink-0" />
-              ) : teacher ? (
-                <div 
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: teacher.color }}
-                />
-              ) : null}
-            </motion.div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="space-y-1">
-              <p className="font-medium">{event.title}</p>
-              <p className="text-xs">
-                {event.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-              {teacher && (
-                <p className="text-xs flex items-center gap-1">
-                  Teacher: {teacher.name}
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: teacher.color }} />
-                </p>
-              )}
-              {substitute && (
-                <p className="text-xs flex items-center gap-1">
-                  Substitute: {substitute.name}
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: substitute.color }} />
-                </p>
-              )}
-              {subject && (
-                <p className="text-xs flex items-center gap-1">
-                  Subject: {subject.name}
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: subject.color }} />
-                </p>
-              )}
-              {event.location && (
-                <p className="text-xs">Location: {event.location}</p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <DropdownMenu key={event._id}>
+        <DropdownMenuTrigger asChild>
+          <motion.div
+            layoutId={event._id}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "px-2 py-1 text-xs rounded-md truncate cursor-pointer",
+              "hover:opacity-80 transition-opacity",
+              "flex items-center gap-1 group"
+            )}
+            style={{ 
+              backgroundColor,
+              color: textColor
+            }}
+          >
+            <span className="truncate flex-1">{event.title}</span>
+            {hasSubstitute ? (
+              <UserCheck className="h-3 w-3 flex-shrink-0" />
+            ) : teacher ? (
+              <div 
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: teacher.color }}
+              />
+            ) : null}
+          </motion.div>
+        </DropdownMenuTrigger>
+        <EventMenu 
+          event={event}
+          onUpdate={handleUpdateEvent}
+          onDelete={handleDeleteEvent}
+        />
+      </DropdownMenu>
     );
   };
 

@@ -26,6 +26,12 @@
     --input: 51 65 85;         /* slate-700 */
     --ring: 51 65 85;          /* slate-700 */
 
+    --card: 15 23 42;          /* slate-900 */
+    --card-foreground: 226 232 240; /* slate-200 */
+
+    --popover: 15 23 42;       /* slate-900 */
+    --popover-foreground: 226 232 240; /* slate-200 */
+
     --radius: 0.5rem;
   }
 }

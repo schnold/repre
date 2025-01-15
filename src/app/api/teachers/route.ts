@@ -1,57 +1,50 @@
 // src/app/api/teachers/route.ts
-import { NextResponse } from 'next/server';
-import { getSession } from '@auth0/nextjs-auth0';
-import { connectToDatabase } from '@/lib/db/mongoose';
+import { NextRequest, NextResponse } from 'next/server';
 import { Teacher } from '@/lib/db/models';
-import { ITeacher } from '@/lib/db/schemas';
-import { Types } from 'mongoose';
+import { connectToDatabase } from '@/lib/db/connect';
+import { getSession } from '@auth0/nextjs-auth0';
 
-export async function GET(request: Request) {
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
   try {
+    await connectToDatabase();
     const session = await getSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
-    }
-
-    await connectToDatabase();
-    const teachers = await Teacher.find({
-      organizationId: new Types.ObjectId(organizationId)
-    }).lean();
-
+    const teachers = await Teacher.find({ createdBy: session.user.sub });
     return NextResponse.json(teachers);
   } catch (error) {
     console.error('Error fetching teachers:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    await connectToDatabase();
     const session = await getSession();
+    
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const body = await request.json();
-    await connectToDatabase();
-
-    const teacher = new Teacher({
-      ...body,
-      organizationId: new Types.ObjectId(body.organizationId),
+    const data = await request.json();
+    const teacher = await Teacher.create({
+      ...data,
       createdBy: session.user.sub
     });
 
-    await teacher.save();
-    return NextResponse.json(teacher.toObject());
-  } catch (error) {
+    return NextResponse.json(teacher);
+  } catch (error: any) {
     console.error('Error creating teacher:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return new NextResponse(
+      error.name === 'ValidationError'
+        ? 'Invalid teacher data'
+        : 'Internal Server Error',
+      { status: error.name === 'ValidationError' ? 400 : 500 }
+    );
   }
 }

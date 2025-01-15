@@ -270,11 +270,7 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
           </div>
         </div>
 
-        <Button 
-          type="submit" 
-          className="w-full"
-          disabled={isLoading}
-        >
+        <Button type="submit" disabled={isLoading}>
           {isLoading ? "Creating..." : "Create Teacher"}
         </Button>
       </form>

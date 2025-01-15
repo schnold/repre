@@ -9,22 +9,20 @@ import {
   Users, 
   Settings,
   LayoutDashboard,
-  CalendarDays,
-  CalendarRange,
-  CalendarClock,
-  Building2
+  Building2,
+  ChevronDown
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { OrganizationSelector } from "@/components/organization-selector";
-import { Separator } from "@/components/ui/separator";
 
 export function MainSidebar() {
-  const { currentOrg } = useOrganizations();
+  const { organizations, currentOrg, setCurrentOrg } = useOrganizations();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -45,9 +43,9 @@ export function MainSidebar() {
       path: "/calendar",
     },
     {
-      title: "Schedules",
-      icon: CalendarClock,
-      path: "/schedules",
+      title: "Organizations",
+      icon: Building2,
+      path: "/organizations",
     },
   ];
 
@@ -56,10 +54,10 @@ export function MainSidebar() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Main Menu Section */}
-      <div className="flex-1 py-6">
-        <div className="px-3 space-y-1">
+    <div className="flex flex-col h-full">
+      {/* Navigation Menu - Scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <nav className="px-3 py-4 space-y-1">
           {menuItems.map((item) => (
             <Button
               key={item.title}
@@ -75,35 +73,52 @@ export function MainSidebar() {
               {item.title}
             </Button>
           ))}
-        </div>
+        </nav>
       </div>
-              {/* Settings */}
-        <div className="p-3 border-t">
-          <Button
-            variant="ghost"
-            className={`w-full justify-start ${
-              pathname?.startsWith('/settings') 
-                ? "bg-primary/10 text-primary hover:bg-primary/20" 
-                : ""
-            }`}
-            onClick={() => handleNavigation('/settings')}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-        </div>
-      {/* Bottom Section with Organization and Settings */}
-      <div className="mt-auto border-t">
-        {/* Organization Selector */}
-        <div className="p-4">
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
-            <Building2 className="h-4 w-4" />
-            <span>Organization</span>
-          </div>
-          <OrganizationSelector />
-        </div>
 
-        
+      {/* Fixed bottom section */}
+      <div className="flex-shrink-0 border-t p-4 space-y-4">
+        {/* Organization Selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full justify-between">
+              <div className="flex items-center">
+                <Building2 className="mr-2 h-4 w-4" />
+                <span className="truncate">
+                  {currentOrg?.name || "Select Organization"}
+                </span>
+              </div>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[200px]" align="end">
+            <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {organizations?.map((org) => (
+              <DropdownMenuItem
+                key={org._id.toString()}
+                onClick={() => setCurrentOrg(org)}
+                className="cursor-pointer"
+              >
+                {org.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Settings */}
+        <Button
+          variant="ghost"
+          className={`w-full justify-start ${
+            pathname === '/settings' 
+              ? "bg-primary/10 text-primary hover:bg-primary/20" 
+              : ""
+          }`}
+          onClick={() => handleNavigation('/settings')}
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          Settings
+        </Button>
       </div>
     </div>
   );

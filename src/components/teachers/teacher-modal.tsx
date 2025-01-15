@@ -1,85 +1,110 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { TeacherForm, TeacherFormData } from "./teacher-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
 
 interface TeacherModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   organizationId: string;
-  onSuccess?: () => void;
+  onClose: () => void;
 }
 
-export function TeacherModal({ 
-  isOpen, 
-  onClose, 
-  organizationId,
-  onSuccess 
-}: TeacherModalProps) {
+export function TeacherModal({ organizationId, onClose }: TeacherModalProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useUser();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subjects, setSubjects] = useState("");
+  const [isOpen, setIsOpen] = useState(true);
 
-  const handleSubmit = async (data: TeacherFormData) => {
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      console.log('Submitting data:', {
-        ...data,
-        organizationId,
-      });
+      if (!user) return;
 
-      const response = await fetch("/api/teachers", {
+      const response = await fetchWithAuth(`/api/organizations/${organizationId}/teachers`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
-        },
+        user,
         body: JSON.stringify({
-          ...data,
-          organizationId,
-        }),
+          name,
+          email,
+          subjects: subjects.split(",").map(s => s.trim()),
+          status: "active"
+        })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(
-          errorData.details?.email || 
-          errorData.message || 
-          'Failed to create teacher'
-        );
-      }
+      if (!response.ok) throw new Error("Failed to create teacher");
 
       toast({
         title: "Success",
-        children: "Teacher created successfully",
+        children: "Teacher created successfully"
       });
+
+      setIsOpen(false);
       onClose();
-      onSuccess?.();
     } catch (error) {
-      console.error('Submission error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        children: error instanceof Error ? error.message : "Failed to create teacher"
+        children: "Failed to create teacher"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) onClose();
+    }}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Teacher</DialogTitle>
+          <DialogTitle>Add New Teacher</DialogTitle>
         </DialogHeader>
-        <TeacherForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="subjects">Subjects (comma-separated)</Label>
+            <Input
+              id="subjects"
+              value={subjects}
+              onChange={(e) => setSubjects(e.target.value)}
+              placeholder="Math, Science, History"
+              required
+            />
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => {
+              setIsOpen(false);
+              onClose();
+            }}>
+              Cancel
+            </Button>
+            <Button type="submit">Add Teacher</Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

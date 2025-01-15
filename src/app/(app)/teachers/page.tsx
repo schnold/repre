@@ -7,10 +7,12 @@ import { useOrganizations } from '@/hooks/use-organizations';
 import { TeacherCard } from '@/components/teachers/teacher-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TeacherModal } from "@/components/teachers/teacher-modal";
+import { TeacherModal } from "@/components/calendar/teachers/teacher-modal";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { Search, Plus, Filter } from 'lucide-react';
+import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
+import { Types } from 'mongoose';
 
 interface Teacher {
   _id: string;
@@ -39,7 +41,7 @@ interface Teacher {
 
 export default function TeachersPage() {
   const { user, isLoading: userLoading } = useUser();
-  const { currentOrg, loading: orgLoading, getCurrentOrganization } = useOrganizations();
+  const { currentOrg, loading: orgLoading } = useOrganizations();
   const router = useRouter();
   const { toast } = useToast();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -56,8 +58,7 @@ export default function TeachersPage() {
   const fetchTeachers = async () => {
     try {
       setIsLoading(true);
-      const currentOrgData = getCurrentOrganization();
-      if (!currentOrgData) {
+      if (!currentOrg) {
         console.log('No organization data available');
         toast({
           variant: "destructive",
@@ -67,8 +68,9 @@ export default function TeachersPage() {
         return;
       }
 
-      console.log('Fetching teachers for organization:', currentOrgData._id);
-      const response = await fetch(`/api/teachers?organizationId=${currentOrgData._id}`);
+      const orgId = typeof currentOrg._id === 'string' ? currentOrg._id : currentOrg._id.toString();
+      console.log('Fetching teachers for organization:', orgId);
+      const response = await fetchWithAuth(`/api/teachers?organizationId=${orgId}`, { user });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -106,8 +108,7 @@ export default function TeachersPage() {
   };
 
   const handleAddTeacher = () => {
-    const currentOrgData = getCurrentOrganization();
-    if (!currentOrgData) {
+    if (!currentOrg) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -130,8 +131,7 @@ export default function TeachersPage() {
     );
   }
 
-  const currentOrgData = getCurrentOrganization();
-  if (!currentOrgData) {
+  if (!currentOrg) {
     return (
       <div className="container mx-auto py-6 text-center">
         <h1 className="text-2xl font-bold mb-4">Loading Organization...</h1>
@@ -139,6 +139,8 @@ export default function TeachersPage() {
       </div>
     );
   }
+
+  const orgId = typeof currentOrg._id === 'string' ? currentOrg._id : currentOrg._id.toString();
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -182,12 +184,14 @@ export default function TeachersPage() {
         )}
       </div>
 
-      <TeacherModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        organizationId={currentOrgData._id}
-        onSuccess={handleTeacherAdded}
-      />
+      {isModalOpen && (
+        <TeacherModal
+          isOpen={isModalOpen}
+          organizationId={orgId}
+          onClose={handleCloseModal}
+          onSuccess={handleTeacherAdded}
+        />
+      )}
     </div>
   );
 }

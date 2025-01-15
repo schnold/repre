@@ -27,9 +27,11 @@ export function SubjectSelector({ value, onChange }: SubjectSelectorProps) {
       {subjects.map((subject) => (
         <Button
           key={subject}
+          type="button"
           variant={value.includes(subject) ? "default" : "outline"}
           size="sm"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
             onChange(
               value.includes(subject)
                 ? value.filter((x) => x !== subject)

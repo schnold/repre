@@ -26,8 +26,11 @@ const TimelineContainer = () => {
   const { selectedDate, getEventsForMonth } = useCalendarContext();
 
   const groupedEvents = useCallback(() => {
-    const monthEvents = getEventsForMonth(selectedDate);
-    return monthEvents.reduce((acc: GroupedEvents, event: CalendarEvent) => {
+    const monthEvents = getEventsForMonth(selectedDate).map(event => ({
+      ...event,
+      id: event._id?.toString() || crypto.randomUUID()
+    }));
+    return monthEvents.reduce<Record<string, CalendarEvent[]>>((acc, event) => {
       const date = event.startTime.toDateString();
       if (!acc[date]) {
         acc[date] = [];

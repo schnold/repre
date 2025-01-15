@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import { useTeacherStore } from "@/store/teacher-store";
 import { Button } from "@/components/ui/button";
-import { TeacherModal } from "./teacher-modal";
+import { TeacherModal } from "@/components/calendar/teachers/teacher-modal";
 import { Edit, Trash2, Plus } from "lucide-react";
 import { useOrganizations } from "@/hooks/use-organizations";
+import { Types } from 'mongoose';
+import { ITeacher } from "@/lib/db/interfaces";
 
 export default function TeacherMenu() {
-  const { teachers, deleteTeacher } = useTeacherStore();
+  const { teachers, deleteTeacher, fetchTeachers } = useTeacherStore();
   const { currentOrg } = useOrganizations();
 
   // State to open/close the TeacherModal
@@ -32,6 +34,38 @@ export default function TeacherMenu() {
       deleteTeacher(id);
     }
   };
+
+  const handleSuccess = () => {
+    setIsModalOpen(false);
+    fetchTeachers();
+  };
+
+  const convertToITeacher = (teacher: any): ITeacher => ({
+    _id: new Types.ObjectId(teacher.id),
+    name: teacher.name,
+    email: teacher.email || '',
+    subjects: teacher.subjects,
+    status: 'active',
+    color: teacher.color,
+    organizationId: currentOrg?._id ? new Types.ObjectId(currentOrg._id) : new Types.ObjectId(),
+    createdBy: 'unknown',
+    maxHoursPerDay: 8,
+    maxHoursPerWeek: 40,
+    availability: teacher.availability || [
+      { dayOfWeek: 1, timeSlots: [] },
+      { dayOfWeek: 2, timeSlots: [] },
+      { dayOfWeek: 3, timeSlots: [] },
+      { dayOfWeek: 4, timeSlots: [] },
+      { dayOfWeek: 5, timeSlots: [] },
+    ],
+    preferences: {
+      consecutiveHours: 4,
+      breakDuration: 30,
+      preferredDays: [],
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
   return (
     <div className="h-full flex flex-col border-r p-4 space-y-4 bg-muted/5">
@@ -71,11 +105,13 @@ export default function TeacherMenu() {
       </div>
 
       {/* Teacher Modal */}
-      {isModalOpen && currentOrg && (
+      {isModalOpen && currentOrg?._id && (
         <TeacherModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          organizationId={currentOrg}
+          organizationId={currentOrg._id.toString()}
+          onSuccess={handleSuccess}
+          teacher={editingTeacherId ? convertToITeacher(teachers.find(t => t.id === editingTeacherId)) : undefined}
         />
       )}
     </div>

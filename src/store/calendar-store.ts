@@ -1,247 +1,120 @@
-// src/store/calendar-store.ts
+"use client";
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CalendarEvent, CalendarView, EventCategory } from '@/lib/types/calendar';
-import { getDateRange } from '@/lib/utils/date-helpers';
+import { IEvent } from '@/lib/db/schema/event';
 
-export type SubjectType = {
-  id: string;
-  name: string;
-  color: string;
-};
+export type CalendarView = 'day' | 'week' | 'month' | 'agenda';
 
-interface FilterState {
-  categories: EventCategory[];
-  subjects: string[];
-  searchQuery: string;
-  dateRange: {
-    start: Date | null;
-    end: Date | null;
-  };
-}
-
-interface CalendarStore {
-  // Core State
-  events: CalendarEvent[];
+interface CalendarState {
   selectedDate: Date;
-  currentView: CalendarView;
-  dateRange: { start: Date; end: Date };
-  subjects: SubjectType[];
-  
-  // Filters
-  filters: FilterState;
-  
-  // UI State
-  selectedEventId: string | null;
+  view: CalendarView;
+  currentView: string;
+  events: IEvent[];
   isEventModalOpen: boolean;
-  modalMode: 'create' | 'edit' | 'view';
-
-  // Subject Actions
-  addSubject: (subject: Omit<SubjectType, 'id'>) => void;
-  updateSubject: (id: string, subject: Partial<SubjectType>) => void;
-  deleteSubject: (id: string) => void;
-
-  // Event Actions
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
-  updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
+  modalMode: 'create' | 'edit';
+  selectedEvent: IEvent | null;
+  selectedEventId: string | null;
+  searchQuery: string;
+  subjects: { id: string; name: string; color: string }[];
+  setSelectedDate: (date: Date) => void;
+  setView: (view: CalendarView) => void;
+  setEvents: (events: IEvent[]) => void;
+  clearEvents: () => void;
+  setEventModalOpen: (open: boolean) => void;
+  setModalMode: (mode: 'create' | 'edit') => void;
+  setSelectedEvent: (event: IEvent | null) => void;
+  setSelectedEventId: (id: string | null) => void;
+  addEvent: (event: IEvent) => void;
+  updateEvent: (event: IEvent) => void;
   deleteEvent: (id: string) => void;
   duplicateEvent: (id: string) => void;
-  clearEvents: () => void;
-  moveEvent: (id: string, newStartTime: Date, newEndTime: Date) => void;
-
-  // Navigation Actions
-  setSelectedDate: (date: Date) => void;
-  setCurrentView: (view: CalendarView) => void;
-  updateDateRange: () => void;
-
-  // Filter Actions
-  setFilters: (filters: Partial<FilterState>) => void;
-  clearFilters: () => void;
-  getFilteredEvents: () => CalendarEvent[];
-
-  // UI Actions
-  setSelectedEventId: (id: string | null) => void;
-  setEventModalOpen: (isOpen: boolean) => void;
-  setModalMode: (mode: 'create' | 'edit' | 'view') => void;
+  setSearchQuery: (query: string) => void;
+  getFilteredEvents: () => IEvent[];
+  setSubjects: (subjects: { id: string; name: string; color: string }[]) => void;
+  addSubject: (subject: { id: string; name: string; color: string }) => void;
+  updateSubject: (id: string, subject: { name: string; color: string }) => void;
+  deleteSubject: (id: string) => void;
 }
 
-const defaultFilters: FilterState = {
-  categories: ['work', 'personal', 'important', 'other'],
-  subjects: [],
-  searchQuery: '',
-  dateRange: { start: null, end: null }
-};
-
-const defaultSubjects: SubjectType[] = [
-  { id: '1', name: 'Mathematics', color: '#FFB3BA' },
-  { id: '2', name: 'Physics', color: '#BFFCC6' },
-  { id: '3', name: 'Chemistry', color: '#BFD5FF' },
-  { id: '4', name: 'Biology', color: '#FFDFBA' },
-  { id: '5', name: 'English', color: '#D7BFFF' },
-];
-
-export const useCalendarStore = create<CalendarStore>()(
+export const useCalendarStore = create<CalendarState>()(
   persist(
     (set, get) => ({
-      // Initial State
-      events: [],
       selectedDate: new Date(),
+      view: 'month',
       currentView: 'month',
-      dateRange: getDateRange(new Date(), 'month'),
-      subjects: defaultSubjects,
-      filters: defaultFilters,
-      selectedEventId: null,
+      events: [],
       isEventModalOpen: false,
-      modalMode: 'view',
-
-      // Subject Management
-      addSubject: (subjectData) => {
-        const subject: SubjectType = {
-          id: crypto.randomUUID(),
-          ...subjectData,
-        };
-        set((state) => ({
-          subjects: [...state.subjects, subject],
-        }));
-      },
-
-      updateSubject: (id, updatedSubject) =>
-        set((state) => ({
-          subjects: state.subjects.map((subject) =>
-            subject.id === id ? { ...subject, ...updatedSubject } : subject
-          ),
-        })),
-
-      deleteSubject: (id) =>
-        set((state) => ({
-          subjects: state.subjects.filter((subject) => subject.id !== id),
-        })),
-
-      // Event Management
-      addEvent: (eventData) => {
-        const newEvent = {
-          id: crypto.randomUUID(),
-          ...eventData,
-        };
-        set((state) => ({
-          events: [...state.events, newEvent],
-        }));
-      },
-
-      updateEvent: (id, updatedEvent) =>
-        set((state) => ({
-          events: state.events.map((event) =>
-            event.id === id ? { ...event, ...updatedEvent } : event
-          ),
-        })),
-
-      deleteEvent: (id) =>
-        set((state) => ({
-          events: state.events.filter((event) => event.id !== id),
-          selectedEventId: state.selectedEventId === id ? null : state.selectedEventId,
-        })),
-
+      modalMode: 'create',
+      selectedEvent: null,
+      selectedEventId: null,
+      searchQuery: '',
+      subjects: [],
+      setSelectedDate: (date) => set({ selectedDate: date }),
+      setView: (view) => set({ view }),
+      setEvents: (events) => set({ events }),
       clearEvents: () => set({ events: [] }),
-
-      duplicateEvent: (id) => {
-        const event = get().events.find((e) => e.id === id);
-        if (event) {
-          const duplicatedEvent: CalendarEvent = {
-            ...event,
-            id: crypto.randomUUID(),
-            title: `${event.title} (Copy)`,
-          };
-          set((state) => ({
-            events: [...state.events, duplicatedEvent],
-          }));
-        }
-      },
-
-      moveEvent: (id, newStartTime, newEndTime) =>
-        set((state) => ({
-          events: state.events.map((event) =>
-            event.id === id
-              ? { ...event, startTime: newStartTime, endTime: newEndTime }
-              : event
-          ),
-        })),
-
-      // Navigation
-      setSelectedDate: (date) =>
-        set((state) => ({
-          selectedDate: new Date(date),
-          dateRange: getDateRange(new Date(date), state.currentView),
-        })),
-
-      setCurrentView: (view) =>
-        set((state) => ({
-          currentView: view,
-          dateRange: getDateRange(state.selectedDate, view),
-        })),
-
-      updateDateRange: () =>
-        set((state) => ({
-          dateRange: getDateRange(state.selectedDate, state.currentView),
-        })),
-
-      // Filtering
-      setFilters: (newFilters) =>
-        set((state) => ({
-          filters: { ...state.filters, ...newFilters },
-        })),
-
-      clearFilters: () => set({ filters: defaultFilters }),
-
+      setEventModalOpen: (open) => set({ isEventModalOpen: open }),
+      setModalMode: (mode) => set({ modalMode: mode }),
+      setSelectedEvent: (event) => set({ selectedEvent: event }),
+      setSelectedEventId: (id) => set({ selectedEventId: id }),
+      addEvent: (event) => set((state) => ({ 
+        events: [...state.events, event] 
+      })),
+      updateEvent: (event) => set((state) => ({
+        events: state.events.map(e => e._id === event._id ? event : e)
+      })),
+      deleteEvent: (id) => set((state) => ({ 
+        events: state.events.filter(e => e._id !== id) 
+      })),
+      duplicateEvent: (id) => set((state) => {
+        const eventToDuplicate = state.events.find(e => e._id === id);
+        if (!eventToDuplicate) return state;
+        
+        const duplicatedEvent = {
+          ...eventToDuplicate,
+          _id: crypto.randomUUID(),
+          title: `${eventToDuplicate.title} (Copy)`,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        return { events: [...state.events, duplicatedEvent] };
+      }),
+      setSearchQuery: (query) => set({ searchQuery: query }),
       getFilteredEvents: () => {
         const state = get();
-        return state.events.filter((event) => {
-          const matchesCategory = state.filters.categories.includes(event.category);
-          const matchesSubject = state.filters.subjects.length === 0 || 
-            (event.subjectId && state.filters.subjects.includes(event.subjectId));
-          const matchesSearch = state.filters.searchQuery
-            ? event.title.toLowerCase().includes(state.filters.searchQuery.toLowerCase()) ||
-              (event.description?.toLowerCase() || '').includes(
-                state.filters.searchQuery.toLowerCase()
-              )
-            : true;
-          const matchesDateRange =
-            state.filters.dateRange.start && state.filters.dateRange.end
-              ? event.startTime >= state.filters.dateRange.start &&
-                event.endTime <= state.filters.dateRange.end
-              : true;
-
-          return matchesCategory && matchesSearch && matchesDateRange && matchesSubject;
-        });
+        const query = state.searchQuery.toLowerCase();
+        if (!query) return state.events;
+        
+        return state.events.filter(event => 
+          event.title?.toLowerCase().includes(query) ||
+          event.description?.toLowerCase().includes(query) ||
+          event.room?.toLowerCase().includes(query)
+        );
       },
-
-      // UI Management
-      setSelectedEventId: (id) => set({ selectedEventId: id }),
-      setEventModalOpen: (isOpen) => set({ isEventModalOpen: isOpen }),
-      setModalMode: (mode) => set({ modalMode: mode }),
+      setSubjects: (subjects) => set({ subjects }),
+      addSubject: (subject) => set((state) => ({ 
+        subjects: [...state.subjects, subject] 
+      })),
+      updateSubject: (id, subject) => set((state) => ({
+        subjects: state.subjects.map(s => s.id === id ? { ...s, ...subject } : s)
+      })),
+      deleteSubject: (id) => set((state) => ({ 
+        subjects: state.subjects.filter(s => s.id !== id) 
+      })),
     }),
     {
-      name: 'calendar-store',
+      name: 'calendar-storage',
       partialize: (state) => ({
-        events: state.events.map(event => ({
-          ...event,
-          startTime: event.startTime.toISOString(),
-          endTime: event.endTime.toISOString(),
-        })),
+        ...state,
         selectedDate: state.selectedDate.toISOString(),
-        currentView: state.currentView,
-        filters: state.filters,
-        subjects: state.subjects,
       }),
-      merge: (persistedState: any, currentState) => ({
-        ...currentState,
-        ...persistedState,
-        events: persistedState.events.map((event: any) => ({
-          ...event,
-          startTime: new Date(event.startTime),
-          endTime: new Date(event.endTime),
-        })),
-        selectedDate: new Date(persistedState.selectedDate),
-      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.selectedDate = new Date(state.selectedDate);
+        }
+      },
     }
   )
 );
