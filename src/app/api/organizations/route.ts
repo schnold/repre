@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Organization } from '@/lib/db/models';
 import { connectToDatabase } from '@/lib/db/connect';
 import { getSession } from '@auth0/nextjs-auth0';
+import { Types } from 'mongoose';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizations = await Organization.find({ createdBy: session.user.sub });
+    const organizations = await Organization.find({ adminId: session.user.sub });
     
     // Return 404 only if no organizations are found
     if (organizations.length === 0) {
@@ -41,8 +42,9 @@ export async function POST(request: Request) {
     const organization = await Organization.create({
       name: data.name,
       description: data.description,
-      type: 'school', // default type
+      adminId: session.user.sub,
       createdBy: session.user.sub,
+      teacherIds: [], // Initialize empty array for teacher IDs
       settings: {
         timeZone: data.timeZone || 'UTC',
         workingHours: {

@@ -82,6 +82,7 @@ export function ScheduleModal({
         </DialogHeader>
         <ScheduleForm 
           onSubmit={handleSubmit} 
+          organizationId={organizationId}
           initialData={schedule ? {
             name: schedule.name,
             description: schedule.description || "",
@@ -93,6 +94,8 @@ export function ScheduleModal({
               maxEventsPerDay: schedule.settings?.maxEventsPerDay || 8,
               minEventDuration: schedule.settings?.minEventDuration || 30,
               maxEventDuration: schedule.settings?.maxEventDuration || 120,
+              totalWeeklyHours: schedule.settings?.totalWeeklyHours || 40,
+              subjectHours: schedule.settings?.subjectHours || []
             },
           } : undefined}
           isLoading={loading}

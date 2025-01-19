@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTeacherStore } from "@/store/teacher-store";
 import { Button } from "@/components/ui/button";
 import { TeacherModal } from "@/components/calendar/teachers/teacher-modal";
@@ -17,6 +17,12 @@ export default function TeacherMenu() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Which teacher are we editing? null means we're adding a new teacher
   const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentOrg?._id) {
+      fetchTeachers(currentOrg._id.toString());
+    }
+  }, [currentOrg?._id, fetchTeachers]);
 
   const handleAddTeacher = () => {
     setEditingTeacherId(null); // not editing an existing teacher
@@ -37,20 +43,22 @@ export default function TeacherMenu() {
 
   const handleSuccess = () => {
     setIsModalOpen(false);
-    fetchTeachers();
+    if (currentOrg?._id) {
+      fetchTeachers(currentOrg._id.toString());
+    }
   };
 
   const convertToITeacher = (teacher: any): ITeacher => ({
-    _id: new Types.ObjectId(teacher.id),
+    _id: new Types.ObjectId(teacher._id),
     name: teacher.name,
     email: teacher.email || '',
     subjects: teacher.subjects,
     status: 'active',
     color: teacher.color,
-    organizationId: currentOrg?._id ? new Types.ObjectId(currentOrg._id) : new Types.ObjectId(),
     createdBy: 'unknown',
     maxHoursPerDay: 8,
     maxHoursPerWeek: 40,
+    organizationIds: currentOrg?._id ? [new Types.ObjectId(currentOrg._id.toString())] : [],
     availability: teacher.availability || [
       { dayOfWeek: 1, timeSlots: [] },
       { dayOfWeek: 2, timeSlots: [] },
@@ -83,7 +91,7 @@ export default function TeacherMenu() {
         )}
         {teachers.map((teacher) => (
           <div
-            key={teacher.id}
+            key={teacher._id}
             className="flex items-center justify-between bg-card p-2 rounded-md"
           >
             <div>
@@ -93,10 +101,10 @@ export default function TeacherMenu() {
               </p>
             </div>
             <div className="flex space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => handleEditTeacher(teacher.id)}>
+              <Button variant="ghost" size="icon" onClick={() => handleEditTeacher(teacher._id)}>
                 <Edit className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(teacher.id)}>
+              <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(teacher._id)}>
                 <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
             </div>
@@ -111,7 +119,7 @@ export default function TeacherMenu() {
           onClose={() => setIsModalOpen(false)}
           organizationId={currentOrg._id.toString()}
           onSuccess={handleSuccess}
-          teacher={editingTeacherId ? convertToITeacher(teachers.find(t => t.id === editingTeacherId)) : undefined}
+          teacher={editingTeacherId ? convertToITeacher(teachers.find(t => t._id === editingTeacherId)) : undefined}
         />
       )}
     </div>

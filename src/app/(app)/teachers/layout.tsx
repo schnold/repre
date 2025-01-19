@@ -22,21 +22,6 @@ export default function TeachersLayout({ children }: { children: ReactNode }) {
       href: "/teachers"
     },
     {
-      title: "Subjects",
-      icon: BookOpen,
-      href: "/teachers/subjects"
-    },
-    {
-      title: "Availability",
-      icon: Clock,
-      href: "/teachers/availability"
-    },
-    {
-      title: "Schedule",
-      icon: Calendar,
-      href: "/teachers/schedule"
-    },
-    {
       title: "Settings",
       icon: Settings,
       href: "/teachers/settings"

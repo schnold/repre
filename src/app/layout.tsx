@@ -5,7 +5,9 @@ import './globals.css';
 
 import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { AuthProvider } from '@/lib/auth/auth-context';
+import { ThemeProvider } from '@/providers/theme-provider';
 import { Toaster } from "@/components/ui/toaster";
+import { OrganizationProvider } from '@/providers/organization-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,13 +23,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} dark`} suppressHydrationWarning>
-        <UserProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-          <Toaster />
-        </UserProvider>
+      <body className={inter.className} suppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <UserProvider>
+            <AuthProvider>
+              <OrganizationProvider>
+                {children}
+                <Toaster />
+              </OrganizationProvider>
+            </AuthProvider>
+          </UserProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

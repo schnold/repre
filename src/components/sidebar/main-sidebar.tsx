@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { OrganizationSelector } from "@/components/organizations/organization-selector";
 
 export function MainSidebar() {
   const { organizations, currentOrg, setCurrentOrg } = useOrganizations();
@@ -79,32 +80,7 @@ export function MainSidebar() {
       {/* Fixed bottom section */}
       <div className="flex-shrink-0 border-t p-4 space-y-4">
         {/* Organization Selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between">
-              <div className="flex items-center">
-                <Building2 className="mr-2 h-4 w-4" />
-                <span className="truncate">
-                  {currentOrg?.name || "Select Organization"}
-                </span>
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[200px]" align="end">
-            <DropdownMenuLabel>Organizations</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {organizations?.map((org) => (
-              <DropdownMenuItem
-                key={org._id.toString()}
-                onClick={() => setCurrentOrg(org)}
-                className="cursor-pointer"
-              >
-                {org.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <OrganizationSelector />
 
         {/* Settings */}
         <Button

@@ -7,6 +7,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { ISchedule } from "@/lib/db/interfaces";
 import { ScheduleModal } from "./schedule-modal";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface ScheduleCardProps {
   schedule: ISchedule;
@@ -74,18 +75,75 @@ export function ScheduleCard({ schedule, onSuccess }: ScheduleCardProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Status</span>
-              <span className="capitalize">{schedule.status}</span>
+          <div className="space-y-4">
+            {/* Basic Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Basic Settings</h4>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>
+                      {schedule.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Events/Day</span>
+                    <span>{schedule.settings?.maxEventsPerDay || '-'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Event Duration</span>
+                    <span>{schedule.settings?.minEventDuration}-{schedule.settings?.maxEventDuration} min</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Working Hours</h4>
+                <div className="space-y-1">
+                  {schedule.workingHours?.start && schedule.workingHours?.end ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Hours</span>
+                      <span>{schedule.workingHours.start} - {schedule.workingHours.end}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Not set</span>
+                  )}
+                  {schedule.dateRange?.start && schedule.dateRange?.end && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Date Range</span>
+                      <span>
+                        {new Date(schedule.dateRange.start).toLocaleDateString()} - 
+                        {new Date(schedule.dateRange.end).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Max Events/Day</span>
-              <span>{schedule.settings?.maxEventsPerDay || '-'}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Event Duration</span>
-              <span>{schedule.settings?.minEventDuration}-{schedule.settings?.maxEventDuration} min</span>
+
+            {/* Teaching Requirements */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Teaching Requirements</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Weekly Hours</span>
+                  <span className="font-medium">{schedule.settings?.totalWeeklyHours || 0}h</span>
+                </div>
+                {schedule.settings?.subjectHours && schedule.settings.subjectHours.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-sm text-muted-foreground">Subject Hours:</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {schedule.settings.subjectHours.map((sh) => (
+                        <div key={sh.subject} className="flex items-center justify-between text-sm bg-muted/50 rounded-md p-1">
+                          <span>{sh.subject}</span>
+                          <span>{sh.minimumHours}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

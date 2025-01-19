@@ -3,32 +3,34 @@
 
 import React, { createContext, useContext, useCallback } from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
-import { IEvent } from '@/lib/db/schema/event';
+import { IEvent } from '@/lib/db/interfaces';
 import { CalendarView } from '@/store/calendar-store';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+
+type ClientEvent = Omit<IEvent, '_id'> & { _id: string };
 
 interface CalendarContextType {
   selectedDate: Date;
   view: CalendarView;
-  events: IEvent[];
+  events: ClientEvent[];
   isEventModalOpen: boolean;
   modalMode: 'create' | 'edit';
-  selectedEvent: IEvent | null;
+  selectedEvent: ClientEvent | null;
   searchQuery: string;
   setSelectedDate: (date: Date) => void;
   setView: (view: CalendarView) => void;
   setEvents: (events: IEvent[]) => void;
   setEventModalOpen: (open: boolean) => void;
   setModalMode: (mode: 'create' | 'edit') => void;
-  setSelectedEvent: (event: IEvent | null) => void;
+  setSelectedEvent: (event: IEvent | ClientEvent | null) => void;
   addEvent: (event: IEvent) => void;
   updateEvent: (event: IEvent) => void;
   deleteEvent: (id: string) => void;
   setSearchQuery: (query: string) => void;
-  getFilteredEvents: () => IEvent[];
-  getEventsForDate: (date: Date) => IEvent[];
-  getEventsForWeek: (date: Date) => IEvent[];
-  getEventsForMonth: (date: Date) => IEvent[];
+  getFilteredEvents: () => ClientEvent[];
+  getEventsForDate: (date: Date) => ClientEvent[];
+  getEventsForWeek: (date: Date) => ClientEvent[];
+  getEventsForMonth: (date: Date) => ClientEvent[];
 }
 
 const CalendarContext = createContext<CalendarContextType | null>(null);

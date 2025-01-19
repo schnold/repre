@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
@@ -15,12 +15,15 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = context.params.id;
+    const { id } = await context.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid organization ID" }, { status: 400 });
     }
 
-    const organization = await Organization.findById(id);
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
@@ -38,7 +41,7 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
@@ -47,7 +50,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = context.params.id;
+    const { id } = await context.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid organization ID" }, { status: 400 });
     }

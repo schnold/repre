@@ -14,7 +14,7 @@ import { ITeacher } from "@/lib/db/interfaces";
 interface TeacherModalProps {
   isOpen: boolean;
   onClose: () => void;
-  organizationId: string;
+  organizationId?: string;
   onSuccess?: () => void;
   teacher?: ITeacher;
 }
@@ -32,28 +32,41 @@ export function TeacherModal({
   const handleSubmit = async (data: any) => {
     setLoading(true);
     try {
-      const targetOrgId = teacher ? teacher.organizationId.toString() : organizationId;
       const url = teacher 
         ? `/api/teachers/${teacher._id}` 
-        : `/api/organizations/${organizationId}/teachers`;
+        : `/api/teachers`;
       const method = teacher ? "PATCH" : "POST";
 
       console.log('Submitting to:', url, 'with method:', method);
       console.log('Data:', data);
 
+      // Create or update teacher
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          organizationId: targetOrgId,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error('Response error:', response.status, errorData);
         throw new Error(errorData?.error || (teacher ? "Failed to update teacher" : "Failed to create teacher"));
+      }
+
+      const teacherData = await response.json();
+
+      // Update organizations with the teacher ID
+      if (data.organizationIds?.length > 0) {
+        await Promise.all(data.organizationIds.map(async (orgId: string) => {
+          const orgResponse = await fetch(`/api/organizations/${orgId}/teachers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacherId: teacherData._id })
+          });
+          if (!orgResponse.ok) {
+            console.error(`Failed to add teacher to organization ${orgId}`);
+          }
+        }));
       }
 
       toast({

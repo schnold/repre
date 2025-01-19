@@ -50,27 +50,26 @@ export default function TeachersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!userLoading && !orgLoading) {
+    if (!userLoading) {
       fetchTeachers();
     }
-  }, [currentOrg, userLoading, orgLoading]);
+  }, [userLoading]);
 
   const fetchTeachers = async () => {
     try {
       setIsLoading(true);
-      if (!currentOrg) {
-        console.log('No organization data available');
+      if (!user) {
+        console.log('No user data available');
         toast({
           variant: "destructive",
           title: "Error",
-          children: "No organization selected"
+          children: "Not authenticated"
         });
         return;
       }
 
-      const orgId = typeof currentOrg._id === 'string' ? currentOrg._id : currentOrg._id.toString();
-      console.log('Fetching teachers for organization:', orgId);
-      const response = await fetchWithAuth(`/api/teachers?organizationId=${orgId}`, { user });
+      console.log('Fetching all teachers');
+      const response = await fetchWithAuth(`/api/teachers`, { user });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -187,7 +186,6 @@ export default function TeachersPage() {
       {isModalOpen && (
         <TeacherModal
           isOpen={isModalOpen}
-          organizationId={orgId}
           onClose={handleCloseModal}
           onSuccess={handleTeacherAdded}
         />

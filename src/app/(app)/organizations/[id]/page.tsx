@@ -3,13 +3,14 @@
 import { useEffect, useState, use } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { IOrganization } from "@/lib/db/interfaces";
+import { IOrganization } from "@/lib/db/models/organization";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Users, Calendar, Clock } from "lucide-react";
+import { Settings, Users, Calendar, Clock, BookOpen } from "lucide-react";
 import { OrganizationSettings } from "@/components/organizations/organization-settings";
 import { OrganizationTeachers } from "@/components/organizations/organization-teachers";
 import { OrganizationSchedules } from "@/components/organizations/organization-schedules";
 import { OrganizationEvents } from "@/components/organizations/organization-events";
+import { OrganizationSubjects } from "@/components/organizations/organization-subjects";
 
 export default function OrganizationPage({
   params,
@@ -26,7 +27,12 @@ export default function OrganizationPage({
         const response = await fetch(`/api/organizations/${id}`);
         if (response.ok) {
           const data = await response.json();
-          setOrganization(data);
+          setOrganization({
+            ...data,
+            subjects: data.subjects || [],
+            timeZone: data.timeZone || 'UTC',
+            workingHours: data.workingHours || { start: '09:00', end: '17:00' }
+          });
         }
       } catch (error) {
         console.error('Error fetching organization:', error);
@@ -81,6 +87,10 @@ export default function OrganizationPage({
             <Clock className="h-4 w-4" />
             Events
           </TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            Subjects
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="settings">
@@ -123,6 +133,17 @@ export default function OrganizationPage({
             </CardHeader>
             <CardContent>
               <OrganizationEvents organizationId={organization._id.toString()} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="subjects">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subjects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrganizationSubjects organizationId={organization._id.toString()} />
             </CardContent>
           </Card>
         </TabsContent>

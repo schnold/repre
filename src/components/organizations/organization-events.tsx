@@ -4,17 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, Calendar } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Plus, Trash2, Calendar, Clock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { IEvent, ISchedule, ITeacher } from "@/lib/db/interfaces";
 import { format } from "date-fns";
+import { EventModal } from "@/components/calendar/events/event-modal";
 
 interface OrganizationEventsProps {
   organizationId: string;
@@ -38,6 +29,14 @@ interface IEventWithStringId {
   endTime: string;
   teacherId: string;
   scheduleId: string;
+  isRecurring: boolean;
+  recurrence?: {
+    frequency: "daily" | "weekly" | "monthly";
+    interval: number;
+    daysOfWeek?: number[];
+    endsOn?: string;
+    count?: number;
+  };
 }
 
 export function OrganizationEvents({ organizationId }: OrganizationEventsProps) {
@@ -55,6 +54,8 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
     endTime: "",
     teacherId: "",
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -68,7 +69,7 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
     try {
       if (!selectedSchedule) return;
       const response = await fetch(
-        `/api/admin/organizations/${organizationId}/schedules/${selectedSchedule}/events`
+        `/api/schedules/${selectedSchedule}/events`
       );
       if (response.ok) {
         const data = await response.json();
@@ -87,7 +88,7 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
   const fetchSchedules = async () => {
     try {
       const response = await fetch(
-        `/api/admin/organizations/${organizationId}/schedules`
+        `/api/organizations/${organizationId}/schedules`
       );
       if (response.ok) {
         const data = await response.json();
@@ -104,14 +105,18 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
   const fetchTeachers = async () => {
     try {
       const response = await fetch(
-        `/api/admin/organizations/${organizationId}/teachers`
+        `/api/organizations/${organizationId}/teachers`
       );
-      if (response.ok) {
-        const data = await response.json();
-        setTeachers(data);
-      }
+      if (!response.ok) throw new Error("Failed to fetch teachers");
+      const data = await response.json();
+      setTeachers(data);
     } catch (error) {
       console.error("Error fetching teachers:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load teachers. Please try again later."
+      });
     }
   };
 
@@ -214,119 +219,43 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
           </SelectContent>
         </Select>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button disabled={!selectedSchedule}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Event
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Event</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={newEventData.title}
-                  onChange={(e) =>
-                    setNewEventData({
-                      ...newEventData,
-                      title: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newEventData.description}
-                  onChange={(e) =>
-                    setNewEventData({
-                      ...newEventData,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={newEventData.date}
-                  onChange={(e) =>
-                    setNewEventData({
-                      ...newEventData,
-                      date: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <Input
-                    id="startTime"
-                    type="time"
-                    value={newEventData.startTime}
-                    onChange={(e) =>
-                      setNewEventData({
-                        ...newEventData,
-                        startTime: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={newEventData.endTime}
-                    onChange={(e) =>
-                      setNewEventData({
-                        ...newEventData,
-                        endTime: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="teacher">Teacher</Label>
-                <Select
-                  value={newEventData.teacherId}
-                  onValueChange={(value) =>
-                    setNewEventData({
-                      ...newEventData,
-                      teacherId: value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Teacher" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers.map((teacher) => (
-                      <SelectItem
-                        key={teacher._id.toString()}
-                        value={teacher._id.toString()}
-                      >
-                        {teacher.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleCreateEvent}>Create Event</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button 
+            disabled={!selectedSchedule} 
+            variant="outline"
+            onClick={() => {
+              setIsRecurring(false);
+              setIsModalOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Event
+          </Button>
+          <Button 
+            disabled={!selectedSchedule}
+            onClick={() => {
+              setIsRecurring(true);
+              setIsModalOpen(true);
+            }}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            New Recurring Event
+          </Button>
+        </div>
       </div>
+
+      {selectedSchedule && isModalOpen && (
+        <EventModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          scheduleId={selectedSchedule}
+          onSuccess={() => {
+            fetchEvents();
+            setIsModalOpen(false);
+          }}
+          defaultRecurring={isRecurring}
+        />
+      )}
 
       <div className="grid gap-4">
         {events.map((event) => (
@@ -334,7 +263,11 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
             <CardContent className="flex justify-between items-center p-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {event.isRecurring ? (
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  )}
                   <h3 className="font-medium">{event.title}</h3>
                 </div>
                 {event.description && (
@@ -351,6 +284,12 @@ export function OrganizationEvents({ organizationId }: OrganizationEventsProps) 
                   Teacher:{" "}
                   {teachers.find((t) => t._id.toString() === event.teacherId)?.name}
                 </div>
+                {event.isRecurring && event.recurrence && (
+                  <div className="text-sm text-muted-foreground">
+                    Repeats: {event.recurrence.frequency}
+                    {event.recurrence.interval > 1 && ` (every ${event.recurrence.interval} ${event.recurrence.frequency}s)`}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"

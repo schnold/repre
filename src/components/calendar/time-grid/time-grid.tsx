@@ -7,25 +7,28 @@ import { cn } from '@/lib/utils';
 import { IEvent } from '@/lib/db/interfaces';
 import { Button } from "@/components/ui/button";
 import { Minus, Plus } from "lucide-react";
+import { useCalendarStore } from '@/store/calendar-store';
+import { Types } from 'mongoose';
 
-interface TimeGridProps {
-  events: IEvent[];
-  onEventUpdate: (event: IEvent) => void;
-  onEventCreate: (position: { x: number; y: number }, time: Date) => void;
-  view: string;
-  selectedDate: Date;
-}
+type ClientEvent = Omit<IEvent, '_id'> & { _id: string };
 
-interface TimeSlot {
-  time: Date;
-  events: IEvent[];
-}
+export function TimeGrid() {
+  const {
+    events,
+    selectedDate,
+    view,
+    setSelectedEvent,
+    setModalMode,
+    setEventModalOpen,
+    setEvents
+  } = useCalendarStore();
 
-export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedDate }: TimeGridProps) {
+  const [isQuickEventDialogOpen, setQuickEventDialogOpen] = useState(false);
+  const [quickEventPosition, setQuickEventPosition] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [draggingEvent, setDraggingEvent] = useState<IEvent | null>(null);
-  const [resizingEvent, setResizingEvent] = useState<IEvent | null>(null);
+  const [draggingEvent, setDraggingEvent] = useState<ClientEvent | null>(null);
+  const [resizingEvent, setResizingEvent] = useState<ClientEvent | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -147,18 +150,51 @@ export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedD
     }
   }, [dragPosition.y, draggingEvent]);
 
-  // Event handlers
-  const handleEventDrag = useCallback((event: IEvent, e: React.MouseEvent | PointerEvent | MouseEvent | TouchEvent) => {
+  const handleEventUpdate = useCallback(async (event: ClientEvent) => {
+    if (!event._id) return;
+
+    try {
+      const response = await fetch(`/api/events/${event._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...event,
+          _id: new Types.ObjectId(event._id)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update event');
+      }
+
+      const updatedEvent = await response.json();
+      setEvents(events.map(e => e._id === event._id ? {
+        ...updatedEvent,
+        _id: updatedEvent._id.toString()
+      } : e));
+    } catch (error) {
+      console.error('Error updating event:', error);
+    }
+  }, [events, setEvents]);
+
+  const handleQuickCreate = useCallback((position: { x: number; y: number }, time: Date) => {
+    setSelectedEvent({
+      startTime: time,
+      endTime: new Date(time.getTime() + 30 * 60000)
+    } as IEvent);
+    setQuickEventPosition(position);
+    setQuickEventDialogOpen(true);
+  }, [setSelectedEvent]);
+
+  const handleEventDrag = useCallback((event: ClientEvent, e: React.MouseEvent | PointerEvent | MouseEvent | TouchEvent) => {
     if (!gridRef.current || !event) return;
 
     const rect = gridRef.current.getBoundingClientRect();
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
     const y = clientY - rect.top;
     
-    // Update drag position immediately
     setDragPosition({ y: y - initialClickOffset });
     
-    // Calculate snapped time for both ghost and actual event
     const snappedTime = positionToTime(y - initialClickOffset);
     const duration = new Date(event.endTime).getTime() - new Date(event.startTime).getTime();
     const snappedEndTime = new Date(snappedTime.getTime() + duration);
@@ -169,7 +205,7 @@ export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedD
     });
   }, [positionToTime, initialClickOffset]);
 
-  const handleEventDragStart = useCallback((event: IEvent, e: React.MouseEvent) => {
+  const handleEventDragStart = useCallback((event: ClientEvent, e: React.MouseEvent) => {
     if (!gridRef.current) return;
     
     const eventElement = (e.currentTarget as HTMLElement);
@@ -192,19 +228,19 @@ export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedD
   const handleEventDragEnd = useCallback((e: React.MouseEvent) => {
     if (!draggingEvent || !gridRef.current || !dragEventTimes.start || !dragEventTimes.end) return;
 
-    onEventUpdate({
+    handleEventUpdate({
       ...draggingEvent,
       startTime: dragEventTimes.start,
       endTime: dragEventTimes.end
-    } as IEvent);
+    });
 
     setDraggingEvent(null);
     setDragEventTimes({ start: null, end: null });
     setDragPosition({ y: 0 });
     setSmoothPosition({ y: 0 });
-  }, [draggingEvent, dragEventTimes, onEventUpdate]);
+  }, [draggingEvent, dragEventTimes, handleEventUpdate]);
 
-  const handleEventResize = useCallback((event: IEvent, e: React.MouseEvent, edge: 'top' | 'bottom') => {
+  const handleEventResize = useCallback((event: ClientEvent, e: React.MouseEvent, edge: 'top' | 'bottom') => {
     if (!gridRef.current) return;
 
     const rect = gridRef.current.getBoundingClientRect();
@@ -212,19 +248,19 @@ export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedD
     const newTime = positionToTime(y);
 
     if (edge === 'top') {
-      onEventUpdate({
+      handleEventUpdate({
         ...event,
         startTime: newTime,
         endTime: new Date(event.endTime)
       });
     } else {
-      onEventUpdate({
+      handleEventUpdate({
         ...event,
         startTime: new Date(event.startTime),
         endTime: newTime
       });
     }
-  }, [positionToTime, onEventUpdate]);
+  }, [positionToTime, handleEventUpdate]);
 
   const handleGridClick = useCallback((e: React.MouseEvent) => {
     if (!gridRef.current) return;
@@ -233,8 +269,8 @@ export function TimeGrid({ events, onEventUpdate, onEventCreate, view, selectedD
     const y = e.clientY - rect.top;
     const clickTime = positionToTime(y);
 
-    onEventCreate({ x: e.clientX, y: e.clientY }, clickTime);
-  }, [positionToTime, onEventCreate]);
+    handleQuickCreate({ x: e.clientX, y: e.clientY }, clickTime);
+  }, [positionToTime, handleQuickCreate]);
 
   // Calculate grid content height
   const gridHeight = totalHours * hourHeight;

@@ -15,11 +15,11 @@ function getRandomColor() {
 
 interface TeacherStore {
   teachers: Teacher[];
-  addTeacher: (teacherData: Omit<Teacher, 'id'>) => void;
+  addTeacher: (teacherData: Omit<Teacher, '_id'>) => void;
   updateTeacher: (id: string, updatedData: Partial<Teacher>) => void;
   deleteTeacher: (id: string) => void;
   clearTeachers: () => void;
-  fetchTeachers: () => Promise<void>;
+  fetchTeachers: (organizationId: string) => Promise<void>;
 }
 
 export const useTeacherStore = create<TeacherStore>()(
@@ -28,10 +28,10 @@ export const useTeacherStore = create<TeacherStore>()(
       teachers: [],
       addTeacher: (teacherData) => {
         const newTeacher: Teacher = {
-            id: crypto.randomUUID(),
-            ...teacherData,
-            color: teacherData.color ?? getRandomColor(), // if teacherData.color is undefined, use a random color
-          };
+          _id: crypto.randomUUID(),
+          ...teacherData,
+          color: teacherData.color ?? getRandomColor(),
+        };
         set((state) => ({
           teachers: [...state.teachers, newTeacher],
         }))
@@ -39,19 +39,19 @@ export const useTeacherStore = create<TeacherStore>()(
       updateTeacher: (id, updatedData) => {
         set((state) => ({
           teachers: state.teachers.map((teacher) =>
-            teacher.id === id ? { ...teacher, ...updatedData } : teacher
+            teacher._id === id ? { ...teacher, ...updatedData } : teacher
           ),
         }))
       },
       deleteTeacher: (id) => {
         set((state) => ({
-          teachers: state.teachers.filter((teacher) => teacher.id !== id),
+          teachers: state.teachers.filter((teacher) => teacher._id !== id),
         }))
       },
       clearTeachers: () => set({ teachers: [] }),
-      fetchTeachers: async () => {
+      fetchTeachers: async (organizationId) => {
         try {
-          const response = await fetch('/api/teachers');
+          const response = await fetch(`/api/organizations/${organizationId}/teachers`);
           if (!response.ok) throw new Error('Failed to fetch teachers');
           const data = await response.json();
           set({ teachers: data });

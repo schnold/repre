@@ -1,7 +1,7 @@
 // src/components/calendar/calendar-view.tsx
 "use client";
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSchedule } from '@/hooks/use-schedule';
 import { useToast } from '@/components/ui/use-toast';
@@ -22,12 +22,23 @@ import SidebarTabs from './calendar-sidebar/sidebar-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { startOfDay, endOfDay, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { useCalendarStore } from '@/store/calendar-store';
+import { ScheduleSelector } from '@/components/calendar/events/schedule-selector';
+import { useParams } from 'next/navigation';
+import { useOrganizations } from '@/hooks/use-organizations';
+import { useSelectedOrganization } from '@/hooks/use-selected-organization';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ViewSelect } from './calendar-header/view-select';
+import { DatePicker } from './calendar-header/date-picker';
+import { Types } from 'mongoose';
+import { CalendarView as ViewType } from '@/store/calendar-store';
 
 export function CalendarView() {
-  const { selectedSchedule } = useSchedule();
+  const params = useParams();
+  const organizationId = params?.id as string;
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { currentOrg } = useOrganizations();
   const {
     view,
     setView,
@@ -42,13 +53,19 @@ export function CalendarView() {
     selectedEvent,
     setSelectedEvent,
     addEvent,
-    deleteEvent
+    deleteEvent,
+    setSelectedSchedule,
+    schedules,
+    setSchedules,
+    selectedSchedule
   } = useCalendarStore();
 
   const [isQuickEventDialogOpen, setQuickEventDialogOpen] = useState(false);
   const [quickEventPosition, setQuickEventPosition] = useState<{ x: number; y: number } | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  const { selectedOrganization, isLoading: isLoadingOrg } = useSelectedOrganization();
 
   // Calculate date range based on current view
   const dateRange = useMemo(() => {
@@ -76,34 +93,58 @@ export function CalendarView() {
     }
   }, [view, selectedDate]);
 
-  // Fetch events for the current view
-  React.useEffect(() => {
-    const fetchEvents = async () => {
-      if (!selectedSchedule?._id) {
-        setIsLoading(false);
-        return;
+  const fetchEvents = useCallback(async () => {
+    if (!selectedOrganization?._id || !selectedSchedule?._id) return;
+
+    try {
+      const response = await fetch(
+        `/api/organizations/${selectedOrganization._id}/schedules/${selectedSchedule._id}/events?startDate=${dateRange.start.toISOString()}&endDate=${dateRange.end.toISOString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch events');
       }
 
+      const data = await response.json();
+      setEvents(data);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load events",
+        variant: "destructive",
+      });
+    }
+  }, [selectedOrganization?._id, selectedSchedule?._id, dateRange, setEvents, toast]);
+
+  // Fetch events when schedule, date range, or organization changes
+  useEffect(() => {
+    if (selectedSchedule?._id) {
+      fetchEvents();
+    }
+  }, [selectedSchedule?._id, dateRange, fetchEvents]);
+
+  // Fetch schedules when organization changes
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      if (!selectedOrganization?._id) return;
+      
       try {
         setIsLoading(true);
-        setError(null);
-        
-        const response = await fetch(
-          `/api/events?scheduleId=${selectedSchedule._id}&startDate=${dateRange.start.toISOString()}&endDate=${dateRange.end.toISOString()}`
-        );
-        
+        const response = await fetch(`/api/organizations/${selectedOrganization._id}/schedules`);
         if (!response.ok) {
-          throw new Error(await response.text() || 'Failed to fetch events');
+          throw new Error('Failed to fetch schedules');
         }
-        
         const data = await response.json();
-        setEvents(data);
-      } catch (error: any) {
-        console.error('Error fetching events:', error);
-        setError(error.message);
+        setSchedules(data);
+        if (data.length > 0 && !selectedSchedule) {
+          setSelectedSchedule(data[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching schedules:', error);
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch events",
+          description: "Failed to load schedules",
           variant: "destructive",
         });
       } finally {
@@ -111,14 +152,16 @@ export function CalendarView() {
       }
     };
 
-    fetchEvents();
-  }, [selectedSchedule?._id, dateRange.start, dateRange.end, setEvents, toast]);
+    fetchSchedules();
+  }, [selectedOrganization?._id, setSchedules, setSelectedSchedule, selectedSchedule, toast]);
 
   // Event handlers
-  const handleEventUpdate = useCallback(async (event: IEvent) => {
+  const handleEventUpdate = useCallback(async (event: Partial<IEvent>) => {
+    if (!selectedOrganization?._id || !selectedSchedule?._id) return;
+
     try {
-      const response = await fetch(`/api/events/${event._id}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/organizations/${selectedOrganization._id}/schedules/${selectedSchedule._id}/events/${event._id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(event),
       });
@@ -127,52 +170,49 @@ export function CalendarView() {
         throw new Error('Failed to update event');
       }
 
-      const updatedEvent = await response.json();
-      setEvents(events.map(e => e._id === event._id ? updatedEvent : e));
+      await fetchEvents();
       toast({
         title: "Event Updated",
         description: `Updated "${event.title}"`
       });
     } catch (error) {
+      console.error('Error updating event:', error);
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Failed to update event"
+        description: "Failed to update event",
+        variant: "destructive",
       });
     }
-  }, [events, setEvents, toast]);
+  }, [selectedOrganization?._id, selectedSchedule?._id, fetchEvents, toast]);
 
   const handleEventCreate = useCallback(async (event: Partial<IEvent>) => {
-    if (!selectedSchedule?._id) return;
+    if (!selectedOrganization?._id || !selectedSchedule?._id) return;
 
     try {
-      const response = await fetch('/api/events', {
+      const response = await fetch(`/api/organizations/${selectedOrganization._id}/schedules/${selectedSchedule._id}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...event,
-          scheduleId: selectedSchedule._id
-        }),
+        body: JSON.stringify(event),
       });
 
       if (!response.ok) {
         throw new Error('Failed to create event');
       }
 
-      const newEvent = await response.json();
-      addEvent(newEvent);
+      await fetchEvents();
       toast({
         title: "Event Created",
         description: `Created "${event.title}"`
       });
     } catch (error) {
+      console.error('Error creating event:', error);
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Failed to create event"
+        description: "Failed to create event",
+        variant: "destructive",
       });
     }
-  }, [selectedSchedule?._id, addEvent, toast]);
+  }, [selectedOrganization?._id, selectedSchedule?._id, fetchEvents, toast]);
 
   const handleQuickCreate = useCallback((position: { x: number; y: number }, time: Date) => {
     setSelectedEvent({
@@ -183,18 +223,24 @@ export function CalendarView() {
     setQuickEventDialogOpen(true);
   }, [setSelectedEvent]);
 
-  if (!selectedSchedule) {
+  if (isLoadingOrg) {
+    return <div>Loading...</div>;
+  }
+
+  if (!selectedOrganization) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 p-4">
-        <p className="text-muted-foreground text-center">
-          Please select or create a schedule to view events
-        </p>
-        <Button 
-          onClick={() => {/* TODO: Add schedule creation dialog */}} 
-          variant="outline"
-        >
-          Create Schedule
-        </Button>
+      <Alert>
+        <AlertDescription>
+          Please select an organization from the dropdown menu to view the calendar.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -214,117 +260,108 @@ export function CalendarView() {
   }
 
   return (
-    <div className="h-screen w-full flex bg-slate-950">
-      {/* Mobile Sidebar Toggle */}
-      {!isDesktop && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed bottom-4 right-4 z-50 md:hidden"
-          onClick={() => setSidebarOpen(prev => !prev)}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      )}
-
-      {/* Left Sidebar */}
-      <AnimatePresence mode="wait">
-        {(isSidebarOpen || isDesktop) && (
-          <motion.div 
-            initial={{ x: -320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -320, opacity: 0 }}
-            transition={{ type: "spring", damping: 20 }}
-            className={cn(
-              "w-64 border-r bg-background",
-              isDesktop ? "relative" : "fixed inset-0 z-50"
-            )}
+    <div className="flex h-full">
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 300, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            className="border-r"
           >
             <SidebarTabs />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Calendar Area */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Calendar Header */}
-        <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            <DateNavigator
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!isSidebarOpen)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <DateNavigator 
               date={selectedDate}
               onDateChange={setSelectedDate}
-              view={view}
+              view={view as ViewType}
             />
-            <Button onClick={() => setEventModalOpen(true)} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Create Event</span>
-              <span className="sm:hidden">New</span>
-            </Button>
           </div>
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            <EventSearchFilter />
-            <ViewSwitcher
-              view={view}
+
+          <div className="flex items-center gap-4">
+            <ViewSelect 
+              view={view as ViewType}
               onViewChange={setView}
             />
-          </div>
-        </header>
-
-        {/* Calendar Content */}
-        <main className="flex-1 min-h-0 overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={`${view}-${selectedDate.valueOf()}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
+            <DatePicker 
+              date={selectedDate}
+              onDateChange={setSelectedDate}
+            />
+            <EventSearchFilter />
+            {selectedSchedule && (
+              <Button
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setModalMode('create');
+                  setEventModalOpen(true);
+                }}
               >
-                {view === 'month' && <MonthView />}
-                {view === 'week' && <WeekView />}
-                {view === 'day' && (
-                  <TimeGrid
-                    events={events}
-                    onEventUpdate={handleEventUpdate}
-                    onEventCreate={handleQuickCreate}
-                    view={view}
-                    selectedDate={selectedDate}
-                  />
-                )}
-                {view === 'agenda' && <AgendaView />}
-              </motion.div>
-            </AnimatePresence>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Event
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          {selectedSchedule ? (
+            <>
+              {view === 'month' && <MonthView />}
+              {view === 'week' && <WeekView />}
+              {view === 'day' && <TimeGrid />}
+              {view === 'agenda' && <AgendaView />}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-4">
+              <p>No schedule selected</p>
+              <ScheduleSelector 
+                organizationId={selectedOrganization._id.toString()}
+                onScheduleSelect={(scheduleId: string) => {
+                  const schedule = schedules.find(s => s._id.toString() === scheduleId);
+                  if (schedule) {
+                    setSelectedSchedule(schedule);
+                  }
+                }}
+              />
+            </div>
           )}
-        </main>
+        </div>
       </div>
 
-      {/* Event Dialogs */}
       <EventDialog
-        event={selectedEvent}
+        event={selectedEvent ? {
+          ...selectedEvent,
+          _id: typeof selectedEvent._id === 'string' ? new Types.ObjectId(selectedEvent._id) : selectedEvent._id
+        } : null}
         isOpen={isEventModalOpen}
-        onClose={() => {
-          setEventModalOpen(false);
-          setSelectedEvent(null);
-        }}
-        onSave={handleEventCreate}
+        onClose={() => setEventModalOpen(false)}
+        onSave={modalMode === 'create' ? handleEventCreate : handleEventUpdate}
+        scheduleId={selectedSchedule?._id.toString() || ''}
       />
 
       <QuickEventDialog
-        event={selectedEvent}
+        event={selectedEvent ? {
+          ...selectedEvent,
+          _id: typeof selectedEvent._id === 'string' ? new Types.ObjectId(selectedEvent._id) : selectedEvent._id
+        } : null}
         isOpen={isQuickEventDialogOpen}
         position={quickEventPosition}
-        onClose={() => {
-          setQuickEventDialogOpen(false);
-          setSelectedEvent(null);
-          setQuickEventPosition(null);
-        }}
+        onClose={() => setQuickEventDialogOpen(false)}
         onSave={handleEventCreate}
+        scheduleId={selectedSchedule?._id.toString() || ''}
       />
     </div>
   );

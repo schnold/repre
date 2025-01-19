@@ -19,7 +19,7 @@ export async function GET(
 
     const organization = await Organization.findOne({
       _id: id,
-      createdBy: session.user.sub
+      adminId: session.user.sub
     });
 
     if (!organization) {
@@ -52,7 +52,7 @@ export async function PATCH(
     console.log('User ID:', session.user.sub);
 
     const organization = await Organization.findOneAndUpdate(
-      { _id: id, createdBy: session.user.sub },
+      { _id: id, adminId: session.user.sub },
       { 
         $set: {
           name: data.name,
@@ -102,7 +102,7 @@ export async function DELETE(
 
     const organization = await Organization.findOneAndDelete({
       _id: id,
-      createdBy: session.user.sub
+      adminId: session.user.sub
     });
 
     if (!organization) {

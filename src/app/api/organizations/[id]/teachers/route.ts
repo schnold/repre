@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Organization, Teacher, OrganizationTeacher } from '@/lib/db/models';
+import { Organization, Teacher } from '@/lib/db/models';
 import { connectToDatabase } from '@/lib/db/connect';
 import { getSession } from '@auth0/nextjs-auth0';
-import { cookies } from 'next/headers';
+import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
 
+// GET all teachers for an organization
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -18,25 +19,28 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationTeachers = await OrganizationTeacher.find({ organizationId: id })
-      .populate('teacherId')
-      .lean();
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
 
-    const teachers = organizationTeachers.map(ot => ({
-      ...ot.teacherId,
-      organizationTeacherStatus: ot.status
-    }));
+    if (!organization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // Get all teachers that belong to this organization using teacherIds array
+    const teachers = await Teacher.find({
+      _id: { $in: organization.teacherIds }
+    });
 
     return NextResponse.json(teachers);
   } catch (error) {
-    console.error('Error fetching teachers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch teachers' },
-      { status: 500 }
-    );
+    console.error('Error fetching organization teachers:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
+// POST to add a teacher to an organization
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -44,7 +48,6 @@ export async function POST(
   try {
     const { id } = await context.params;
     await connectToDatabase();
-    await cookies(); // Ensure cookies are awaited
     const session = await getSession();
     
     if (!session?.user) {
@@ -52,64 +55,88 @@ export async function POST(
     }
 
     const data = await request.json();
-    console.log('Received teacher data:', data);
+    const { teacherId } = data;
 
-    // Check if this is an existing teacher being assigned
-    if (data.teacherId) {
-      // Assign existing teacher to organization
-      const existingAssignment = await OrganizationTeacher.findOne({
-        organizationId: id,
-        teacherId: data.teacherId
-      });
-
-      if (existingAssignment) {
-        return NextResponse.json(
-          { error: 'Teacher already assigned to this organization' },
-          { status: 400 }
-        );
-      }
-
-      const organizationTeacher = await OrganizationTeacher.create({
-        organizationId: id,
-        teacherId: data.teacherId,
-        status: 'active'
-      });
-
-      return NextResponse.json(organizationTeacher);
-    } else {
-      // Create new teacher and assign to organization
-      const teacherData = {
-        name: data.name,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        subjects: data.subjects,
-        color: data.color,
-        maxHoursPerDay: data.maxHoursPerDay,
-        maxHoursPerWeek: data.maxHoursPerWeek,
-        availability: data.availability,
-        preferences: data.preferences,
-        createdBy: session.user.sub
-      };
-
-      const teacher = await Teacher.create(teacherData);
-
-      const organizationTeacher = await OrganizationTeacher.create({
-        organizationId: id,
-        teacherId: teacher._id,
-        status: 'active'
-      });
-
-      const populatedTeacher = await Teacher.findById(teacher._id);
-      return NextResponse.json({
-        ...organizationTeacher.toObject(),
-        teacherId: populatedTeacher
-      });
+    if (!teacherId || !mongoose.Types.ObjectId.isValid(teacherId)) {
+      return NextResponse.json({ error: 'Invalid teacher ID' }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error('Error creating/assigning teacher:', error);
-    return NextResponse.json(
-      { error: error.name === 'ValidationError' ? 'Invalid teacher data' : 'Internal Server Error' },
-      { status: error.name === 'ValidationError' ? 400 : 500 }
-    );
+
+    // Check if organization exists
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
+    if (!organization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // Check if teacher exists
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
+    }
+
+    // Add teacher ID to organization if not already present
+    await Organization.findByIdAndUpdate(id, {
+      $addToSet: { teacherIds: teacherId }
+    });
+
+    // Add organization ID to teacher if not already present
+    await Teacher.findByIdAndUpdate(teacherId, {
+      $addToSet: { organizationIds: id }
+    });
+
+    return NextResponse.json({ message: 'Teacher added to organization successfully' });
+  } catch (error) {
+    console.error('Error adding teacher to organization:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// DELETE to remove a teacher from an organization
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const { searchParams } = new URL(req.url);
+    const teacherId = searchParams.get('teacherId');
+
+    if (!teacherId || !mongoose.Types.ObjectId.isValid(teacherId)) {
+      return NextResponse.json({ error: 'Invalid teacher ID' }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if organization exists
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
+    if (!organization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // Remove teacher ID from organization
+    await Organization.findByIdAndUpdate(id, {
+      $pull: { teacherIds: teacherId }
+    });
+
+    // Remove organization ID from teacher
+    await Teacher.findByIdAndUpdate(teacherId, {
+      $pull: { organizationIds: id }
+    });
+
+    return NextResponse.json({ message: 'Teacher removed from organization successfully' });
+  } catch (error) {
+    console.error('Error removing teacher from organization:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -1,20 +1,46 @@
 import mongoose from 'mongoose';
-import { IAdmin } from '../interfaces';
+import { Types } from 'mongoose';
+
+export interface IAdmin {
+  _id: Types.ObjectId;
+  auth0Id: string;
+  name?: string;
+  email: string;
+  selectedOrganizationId?: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const adminSchema = new mongoose.Schema<IAdmin>(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    settings: {
-      timeZone: { type: String, required: true, default: 'UTC' },
-      notificationPreferences: {
-        immediateUpdates: { type: Boolean, default: true },
-        dailyDigest: { type: Boolean, default: false },
-        weeklyDigest: { type: Boolean, default: false },
-      },
+    auth0Id: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    name: {
+      type: String,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    selectedOrganizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export const Admin = mongoose.models.Admin || mongoose.model<IAdmin>('Admin', adminSchema); 
+// Only create indexes for non-unique fields
+adminSchema.index({ selectedOrganizationId: 1 });
+
+// Clear existing model to prevent OverwriteModelError
+if (mongoose.models.Admin) {
+  delete mongoose.models.Admin;
+}
+
+export const Admin = mongoose.model<IAdmin>('Admin', adminSchema); 

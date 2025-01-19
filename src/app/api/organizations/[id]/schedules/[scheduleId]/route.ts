@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@auth0/nextjs-auth0';
 import { connectToDatabase } from '@/lib/db/mongoose';
-import { Organization } from '@/lib/db/models';
-import { Schedule } from '@/lib/db/schemas';
+import { Organization, Schedule } from '@/lib/db/models';
 import { Types } from 'mongoose';
 
 interface Params {

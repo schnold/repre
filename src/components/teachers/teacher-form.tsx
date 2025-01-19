@@ -19,11 +19,21 @@ import { TeacherAvailability } from "./teacher-availability";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useOrganizations } from "@/hooks/use-organizations";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MultiSelect } from "../ui/multi-select";
 
 const teacherSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   phoneNumber: z.string().optional(),
+  organizationIds: z.array(z.string()).min(1, "At least one organization is required"),
   subjects: z.array(z.string()).min(1, "At least one subject is required"),
   color: z.string(),
   maxHoursPerDay: z.number().min(1).max(12),
@@ -37,7 +47,7 @@ const teacherSchema = z.object({
   })),
   preferences: z.object({
     consecutiveHours: z.number().min(1).max(8),
-    breakDuration: z.number().min(0).max(120), // in minutes
+    breakDuration: z.number().min(0).max(120),
     preferredDays: z.array(z.number().min(1).max(7))
   })
 });
@@ -51,6 +61,7 @@ interface TeacherFormProps {
 
 export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
   const [apiError, setApiError] = useState<string | null>(null);
+  const { organizations } = useOrganizations();
   
   const form = useForm<TeacherFormData>({
     resolver: zodResolver(teacherSchema),
@@ -58,6 +69,7 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
       name: "",
       email: "",
       phoneNumber: "",
+      organizationIds: [],
       subjects: [],
       color: "#3b82f6",
       maxHoursPerDay: 8,
@@ -80,12 +92,15 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
   const handleSubmit = async (data: TeacherFormData) => {
     try {
       setApiError(null);
-      await onSubmit(data);
+      const formattedData = {
+        ...data,
+        organizationIds: data.organizationIds.map(id => id.toString())
+      };
+      await onSubmit(formattedData);
     } catch (error) {
       if (error && typeof error === 'object' && 'error' in error) {
         const apiError = error as { error: string; details?: { [key: string]: string } };
         
-        // Set field errors if they exist
         if (apiError.details) {
           Object.keys(apiError.details).forEach((key) => {
             form.setError(key as any, {
@@ -95,7 +110,6 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
           });
         }
         
-        // Set general error message
         setApiError(apiError.error);
       } else {
         setApiError('An unexpected error occurred. Please try again later.');
@@ -157,6 +171,28 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
 
         <FormField
           control={form.control}
+          name="organizationIds"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Organizations</FormLabel>
+              <FormControl>
+                <MultiSelect
+                  placeholder="Select organizations"
+                  options={organizations.map(org => ({
+                    label: org.name,
+                    value: org._id.toString()
+                  }))}
+                  value={field.value.map(id => id.toString())}
+                  onChange={(values: string[]) => field.onChange(values.map(v => v.toString()))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="subjects"
           render={({ field }) => (
             <FormItem>
@@ -165,6 +201,7 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
                 <SubjectSelector
                   value={field.value}
                   onChange={field.onChange}
+                  organizationIds={form.watch('organizationIds')}
                 />
               </FormControl>
               <FormMessage />
@@ -271,7 +308,7 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
         </div>
 
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Teacher"}
+          {isLoading ? "Saving..." : "Save Teacher"}
         </Button>
       </form>
     </Form>

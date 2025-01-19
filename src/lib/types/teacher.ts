@@ -5,10 +5,10 @@ interface Availability {
   }
   
   export interface Teacher {
-    id: string
-    name: string
-    subjects: string[]
-    availability?: Availability[]
-    color: string 
+    _id: string;
+    name: string;
+    subjects: string[];
+    availability?: Availability[];
+    color: string;
   }
   

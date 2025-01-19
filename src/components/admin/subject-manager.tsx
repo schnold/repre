@@ -20,17 +20,6 @@ interface SubjectManagerProps {
   organizationId: string;
 }
 
-const defaultColors = [
-  { label: 'Blue', value: '#2563eb' },
-  { label: 'Green', value: '#16a34a' },
-  { label: 'Red', value: '#dc2626' },
-  { label: 'Purple', value: '#9333ea' },
-  { label: 'Yellow', value: '#ca8a04' },
-  { label: 'Orange', value: '#ea580c' },
-  { label: 'Pink', value: '#db2777' },
-  { label: 'Cyan', value: '#0891b2' },
-];
-
 export function SubjectManager({ organizationId }: SubjectManagerProps) {
   const { toast } = useToast();
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -38,7 +27,7 @@ export function SubjectManager({ organizationId }: SubjectManagerProps) {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    color: defaultColors[0].value,
+    color: '#3b82f6',
     description: ''
   });
 
@@ -86,7 +75,7 @@ export function SubjectManager({ organizationId }: SubjectManagerProps) {
       });
 
       // Reset form and refresh subjects
-      setFormData({ name: '', color: defaultColors[0].value, description: '' });
+      setFormData({ name: '', color: '#3b82f6', description: '' });
       setEditingSubject(null);
       fetchSubjects();
     } catch (error) {
@@ -149,7 +138,6 @@ export function SubjectManager({ organizationId }: SubjectManagerProps) {
               <ColorPicker
                 value={formData.color}
                 onChange={(color) => setFormData({ ...formData, color })}
-                colors={defaultColors}
               />
             </div>
 
@@ -169,7 +157,7 @@ export function SubjectManager({ organizationId }: SubjectManagerProps) {
                   variant="outline"
                   onClick={() => {
                     setEditingSubject(null);
-                    setFormData({ name: '', color: defaultColors[0].value, description: '' });
+                    setFormData({ name: '', color: '#3b82f6', description: '' });
                   }}
                 >
                   Cancel

@@ -1,41 +1,95 @@
-import { NextResponse } from 'next/server';
-import { getSession } from '@auth0/nextjs-auth0';
-import { connectToDatabase } from '@/lib/db/mongoose';
-import { Subject, Organization } from '@/lib/db/models';
-import { Types } from 'mongoose';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/db/connect';
+import { Subject } from '@/lib/db/models/subject';
+import mongoose from 'mongoose';
+import { Organization } from "@/lib/db/models/organization";
 
+// GET /api/organizations/[id]/subjects
 export async function GET(
-  req: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getSession();
-    if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
-
     await connectToDatabase();
+    const organizationId = params.id;
 
-    // Check if user has access to the organization
-    const organization = await Organization.findOne({
-      _id: params.id,
-      $or: [
-        { admins: session.user.sub },
-        { members: session.user.sub }
-      ]
-    });
-
+    const organization = await Organization.findById(organizationId);
     if (!organization) {
-      return new NextResponse('Organization not found', { status: 404 });
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 }
+      );
     }
 
-    const subjects = await Subject.find({
-      organizationId: new Types.ObjectId(params.id)
-    }).lean();
-
-    return NextResponse.json(subjects);
+    return NextResponse.json({ subjects: organization.subjects || [] });
   } catch (error) {
-    console.error('Error fetching subjects:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error("Error fetching subjects:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch subjects" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/organizations/[id]/subjects
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connectToDatabase();
+    const organizationId = params.id;
+    const data = await request.json();
+
+    if (!data.name?.trim()) {
+      return NextResponse.json(
+        { error: "Subject name is required" },
+        { status: 400 }
+      );
+    }
+
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 }
+      );
+    }
+
+    // Create new subject
+    const newSubject = {
+      _id: new mongoose.Types.ObjectId(),
+      name: data.name.trim(),
+      color: data.color || "#3b82f6",
+    };
+
+    // Add subject to organization
+    if (!organization.subjects) {
+      organization.subjects = [];
+    }
+    organization.subjects.push(newSubject);
+    await organization.save();
+
+    return NextResponse.json(newSubject);
+  } catch (error) {
+    console.error("Error creating subject:", error);
+    return NextResponse.json(
+      { error: "Failed to create subject" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    await connectToDatabase();
+    const { id } = await params;
+    const { subjectId } = await request.json();
+
+    await Subject.findByIdAndDelete(subjectId);
+    return NextResponse.json({ message: 'Subject deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting subject:', error);
+    return NextResponse.json({ error: 'Failed to delete subject' }, { status: 500 });
   }
 } 

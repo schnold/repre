@@ -21,14 +21,21 @@ const scheduleSchema = new mongoose.Schema({
       allowedSubjects: { type: [String], default: [] },
       maxEventsPerDay: { type: Number, default: null },
       minEventDuration: { type: Number, default: null },
-      maxEventDuration: { type: Number, default: null }
+      maxEventDuration: { type: Number, default: null },
+      totalWeeklyHours: { type: Number, required: true, default: 40 },
+      subjectHours: [{
+        subject: { type: String, required: true },
+        minimumHours: { type: Number, required: true, min: 0 }
+      }]
     },
     default: () => ({
       allowedRooms: [],
       allowedSubjects: [],
       maxEventsPerDay: null,
       minEventDuration: null,
-      maxEventDuration: null
+      maxEventDuration: null,
+      totalWeeklyHours: 40,
+      subjectHours: []
     })
   },
   dateRange: {

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
 const scheduleSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -29,6 +30,11 @@ const scheduleSchema = z.object({
     maxEventsPerDay: z.number().min(1, "Must be at least 1").optional(),
     minEventDuration: z.number().min(15, "Must be at least 15 minutes").optional(),
     maxEventDuration: z.number().min(15, "Must be at least 15 minutes").optional(),
+    totalWeeklyHours: z.number().min(1, "Must be at least 1 hour"),
+    subjectHours: z.array(z.object({
+      subject: z.string(),
+      minimumHours: z.number().min(0)
+    }))
   }),
 });
 
@@ -36,9 +42,36 @@ interface ScheduleFormProps {
   onSubmit: (data: any) => Promise<void>;
   initialData?: any;
   isLoading?: boolean;
+  organizationId: string;
 }
 
-export function ScheduleForm({ onSubmit, initialData, isLoading }: ScheduleFormProps) {
+interface SubjectHours {
+  subject: string;
+  minimumHours: number;
+}
+
+export function ScheduleForm({ onSubmit, initialData, isLoading, organizationId }: ScheduleFormProps) {
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const response = await fetch(`/api/organizations/${organizationId}/teachers`);
+        if (response.ok) {
+          const teachers = await response.json();
+          const subjects = new Set<string>();
+          teachers.forEach((teacher: any) => {
+            teacher.subjects.forEach((subject: string) => subjects.add(subject));
+          });
+          setAvailableSubjects(Array.from(subjects));
+        }
+      } catch (error) {
+        console.error('Error fetching subjects:', error);
+      }
+    };
+    fetchSubjects();
+  }, [organizationId]);
+
   const form = useForm({
     resolver: zodResolver(scheduleSchema),
     defaultValues: initialData || {
@@ -52,6 +85,8 @@ export function ScheduleForm({ onSubmit, initialData, isLoading }: ScheduleFormP
         maxEventsPerDay: 8,
         minEventDuration: 30,
         maxEventDuration: 120,
+        totalWeeklyHours: 40,
+        subjectHours: []
       },
     },
   });
@@ -182,6 +217,77 @@ export function ScheduleForm({ onSubmit, initialData, isLoading }: ScheduleFormP
                 </FormItem>
               )}
             />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Teaching Hours Requirements</h3>
+          
+          <FormField
+            control={form.control}
+            name="settings.totalWeeklyHours"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Total Weekly Hours</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    {...field} 
+                    onChange={e => field.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Total teaching hours required per week
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Minimum Hours per Subject</h4>
+            {availableSubjects.map((subject) => {
+              const subjectHours = form.getValues('settings.subjectHours') || [];
+              const existingHours = subjectHours.find((sh: SubjectHours) => sh?.subject === subject)?.minimumHours || 0;
+              
+              return (
+                <FormField
+                  key={subject}
+                  control={form.control}
+                  name="settings.subjectHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{subject}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          defaultValue={existingHours}
+                          onBlur={(e) => {
+                            const value = Number(e.target.value);
+                            const currentHours = [...(field.value || [])];
+                            const existingIndex = currentHours.findIndex((sh: SubjectHours) => sh?.subject === subject);
+                            
+                            if (existingIndex >= 0) {
+                              currentHours[existingIndex] = { subject, minimumHours: value };
+                            } else {
+                              currentHours.push({ subject, minimumHours: value });
+                            }
+                            
+                            field.onChange(currentHours);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Minimum hours required for {subject}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              );
+            })}
           </div>
         </div>
 
