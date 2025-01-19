@@ -11,6 +11,7 @@ import { OrganizationTeachers } from "@/components/organizations/organization-te
 import { OrganizationSchedules } from "@/components/organizations/organization-schedules";
 import { OrganizationEvents } from "@/components/organizations/organization-events";
 import { OrganizationSubjects } from "@/components/organizations/organization-subjects";
+import { useRouter } from "next/navigation";
 
 export default function OrganizationPage({
   params,
@@ -18,10 +19,17 @@ export default function OrganizationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [organization, setOrganization] = useState<IOrganization | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If id is "new", redirect back to organizations page
+    if (id === "new") {
+      router.push("/organizations");
+      return;
+    }
+
     const fetchOrganization = async () => {
       try {
         const response = await fetch(`/api/organizations/${id}`);
@@ -44,7 +52,7 @@ export default function OrganizationPage({
     if (id) {
       fetchOrganization();
     }
-  }, [id]);
+  }, [id, router]);
 
   if (loading) {
     return (

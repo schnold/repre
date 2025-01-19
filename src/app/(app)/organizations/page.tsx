@@ -45,8 +45,8 @@ export default function OrganizationsPage() {
     try {
       const response = await fetchWithAuth('/api/organizations', { user });
       if (!response.ok) throw new Error('Failed to fetch organizations');
-      const data = await response.json();
-      setOrganizations(data);
+      const { organizations: orgs } = await response.json();
+      setOrganizations(orgs);
     } catch (error) {
       toast({
         variant: 'destructive',

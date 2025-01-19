@@ -6,7 +6,13 @@ export interface IAdmin {
   auth0Id: string;
   name?: string;
   email: string;
-  selectedOrganizationId?: Types.ObjectId;
+  preferences: {
+    theme?: string;
+    notifications?: boolean;
+    defaultView?: 'week' | 'month' | 'day';
+    startOfWeek?: number;
+    selectedOrganizationId?: Types.ObjectId;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,10 +31,20 @@ const adminSchema = new mongoose.Schema<IAdmin>(
       type: String,
       required: true,
     },
-    selectedOrganizationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
-    },
+    preferences: {
+      theme: { type: String },
+      notifications: { type: Boolean, default: true },
+      defaultView: { 
+        type: String, 
+        enum: ['week', 'month', 'day'],
+        default: 'week'
+      },
+      startOfWeek: { type: Number, min: 0, max: 6, default: 0 },
+      selectedOrganizationId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Organization'
+      }
+    }
   },
   {
     timestamps: true,
@@ -36,7 +52,8 @@ const adminSchema = new mongoose.Schema<IAdmin>(
 );
 
 // Only create indexes for non-unique fields
-adminSchema.index({ selectedOrganizationId: 1 });
+adminSchema.index({ email: 1 });
+adminSchema.index({ 'preferences.selectedOrganizationId': 1 });
 
 // Clear existing model to prevent OverwriteModelError
 if (mongoose.models.Admin) {

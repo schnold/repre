@@ -34,7 +34,10 @@ const teacherSchema = z.object({
   email: z.string().email("Invalid email"),
   phoneNumber: z.string().optional(),
   organizationIds: z.array(z.string()).min(1, "At least one organization is required"),
-  subjects: z.array(z.string()).min(1, "At least one subject is required"),
+  subjects: z.array(z.object({
+    organizationId: z.string(),
+    subjectId: z.string()
+  })).min(1, "At least one subject is required"),
   color: z.string(),
   maxHoursPerDay: z.number().min(1).max(12),
   maxHoursPerWeek: z.number().min(1).max(60),
@@ -55,7 +58,31 @@ const teacherSchema = z.object({
 export type TeacherFormData = z.infer<typeof teacherSchema>;
 
 interface TeacherFormProps {
-  onSubmit: (data: TeacherFormData) => Promise<void>;
+  onSubmit: (data: {
+    name: string;
+    email: string;
+    organizationIds: string[];
+    subjects: Array<{
+      organizationId: string;
+      subjectId: string;
+    }>;
+    color: string;
+    maxHoursPerDay: number;
+    maxHoursPerWeek: number;
+    availability: Array<{
+      dayOfWeek: number;
+      timeSlots: Array<{
+        start: string;
+        end: string;
+      }>;
+    }>;
+    preferences: {
+      consecutiveHours: number;
+      breakDuration: number;
+      preferredDays: number[];
+    };
+    phoneNumber?: string;
+  }) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -94,7 +121,11 @@ export function TeacherForm({ onSubmit, isLoading }: TeacherFormProps) {
       setApiError(null);
       const formattedData = {
         ...data,
-        organizationIds: data.organizationIds.map(id => id.toString())
+        organizationIds: data.organizationIds.map(id => id.toString()),
+        subjects: data.subjects.map(subject => ({
+          organizationId: subject.organizationId,
+          subjectId: subject.subjectId
+        }))
       };
       await onSubmit(formattedData);
     } catch (error) {

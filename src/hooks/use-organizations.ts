@@ -56,7 +56,7 @@ export function useOrganizations() {
         return;
       }
 
-      const orgs = await orgsResponse.json();
+      const { organizations: orgs } = await orgsResponse.json();
       setOrganizations(orgs);
 
       // If we have a selected organization from admin profile, use that

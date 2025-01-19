@@ -1,34 +1,52 @@
 // FILE: src/app/api/teachers/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongoose";
-import { Teacher } from "@/lib/db/models";
+import { Teacher, Organization } from "@/lib/db/models";
 import { Types } from "mongoose";
 import { getSession } from '@auth0/nextjs-auth0';
 import mongoose from 'mongoose';
 
+export const runtime = 'nodejs';
+
 // GET a single teacher
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     await connectToDatabase();
     const session = await getSession();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid teacher ID" }, { status: 400 });
-    }
+    const teacher = await Teacher.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
 
-    const teacher = await Teacher.findById(id);
     if (!teacher) {
       return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
 
-    return NextResponse.json(teacher);
+    // Get all organizations for this admin to include subject details
+    const organizations = await Organization.find({ adminId: session.user.sub });
+
+    // Enhance teacher data with subject details
+    const teacherObj = teacher.toObject();
+    teacherObj.subjects = teacherObj.subjects.map(subject => {
+      const org = organizations.find(o => o._id.toString() === subject.organizationId.toString());
+      const subjectDetails = org?.subjects.find(s => s._id.toString() === subject.subjectId);
+      return {
+        ...subject,
+        name: subjectDetails?.name || 'Unknown Subject',
+        color: subjectDetails?.color || '#000000',
+        organizationName: org?.name || 'Unknown Organization'
+      };
+    });
+
+    return NextResponse.json(teacherObj);
   } catch (error) {
     console.error('Error fetching teacher:', error);
     return NextResponse.json(
@@ -40,35 +58,72 @@ export async function GET(
 
 // PUT or PATCH to update a teacher
 export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     await connectToDatabase();
     const session = await getSession();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid teacher ID" }, { status: 400 });
+    const data = await req.json();
+    const { organizationId, subjects, ...teacherData } = data;
+
+    // Verify teacher exists and belongs to admin
+    const teacher = await Teacher.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
+    if (!teacher) {
+      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
 
-    const data = await req.json();
+    // Handle subject updates if provided
+    if (organizationId && subjects) {
+      // Verify organization exists and belongs to admin
+      const organization = await Organization.findOne({
+        _id: organizationId,
+        adminId: session.user.sub
+      });
+
+      if (!organization) {
+        return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+      }
+
+      // Verify all subjects exist in the organization
+      const validSubjects = subjects.every((subjectId: string) =>
+        organization.subjects.some(s => s._id.toString() === subjectId)
+      );
+
+      if (!validSubjects) {
+        return NextResponse.json({ error: "Invalid subject IDs" }, { status: 400 });
+      }
+
+      // Format subjects array with organization reference
+      teacherData.subjects = subjects.map((subjectId: string) => ({
+        organizationId: new mongoose.Types.ObjectId(organizationId),
+        subjectId
+      }));
+
+      // Update organization's teacherIds if not already present
+      await Organization.findByIdAndUpdate(organizationId, {
+        $addToSet: { teacherIds: teacher._id }
+      });
+    }
+
+    // Update teacher
     const updatedTeacher = await Teacher.findByIdAndUpdate(
       id,
-      { 
-        $set: {
-          ...data,
-          updatedAt: new Date()
-        }
-      },
-      { new: true, runValidators: true }
+      { $set: teacherData },
+      { new: true }
     );
 
     if (!updatedTeacher) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
+      return NextResponse.json({ error: "Failed to update teacher" }, { status: 404 });
     }
 
     return NextResponse.json(updatedTeacher);
@@ -84,24 +139,34 @@ export async function PATCH(
 // DELETE teacher
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     await connectToDatabase();
     const session = await getSession();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid teacher ID" }, { status: 400 });
-    }
+    // Verify teacher exists and belongs to admin
+    const teacher = await Teacher.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
 
-    const deletedTeacher = await Teacher.findByIdAndDelete(id);
-    if (!deletedTeacher) {
+    if (!teacher) {
       return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
+
+    // Remove teacher from all organizations they belong to
+    await Organization.updateMany(
+      { teacherIds: teacher._id },
+      { $pull: { teacherIds: teacher._id } }
+    );
+
+    // Delete the teacher
+    await Teacher.findByIdAndDelete(id);
 
     return NextResponse.json({ message: "Teacher deleted successfully" });
   } catch (error) {

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { OrganizationSelector } from "../../ui/organization-selector";
+import { OrganizationSelector } from "@/components/organizations/organization-selector";
 import { Building2, LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "./user-nav";

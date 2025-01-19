@@ -3,22 +3,29 @@ import { connectToDatabase } from '@/lib/db/connect';
 import { Subject } from '@/lib/db/models/subject';
 import mongoose from 'mongoose';
 import { Organization } from "@/lib/db/models/organization";
+import { getSession } from "@auth0/nextjs-auth0";
+import { Types } from "mongoose";
 
 // GET /api/organizations/[id]/subjects
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
+  const { id } = context.params;
   try {
     await connectToDatabase();
-    const organizationId = params.id;
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const organization = await Organization.findById(organizationId);
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
     if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
     return NextResponse.json({ subjects: organization.subjects || [] });
@@ -33,44 +40,44 @@ export async function GET(
 
 // POST /api/organizations/[id]/subjects
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
+  const { id } = context.params;
   try {
     await connectToDatabase();
-    const organizationId = params.id;
-    const data = await request.json();
-
-    if (!data.name?.trim()) {
-      return NextResponse.json(
-        { error: "Subject name is required" },
-        { status: 400 }
-      );
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const organization = await Organization.findById(organizationId);
+    const data = await req.json();
+    const { name, color, description } = data;
+
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
     if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    // Create new subject
-    const newSubject = {
-      _id: new mongoose.Types.ObjectId(),
-      name: data.name.trim(),
-      color: data.color || "#3b82f6",
+    // Create a new subject with _id and organizationId
+    const subject = {
+      _id: new Types.ObjectId(),
+      name,
+      color: color || '#3b82f6', // Default blue color if not provided
+      description,
+      organizationId: new Types.ObjectId(id)
     };
 
-    // Add subject to organization
-    if (!organization.subjects) {
-      organization.subjects = [];
-    }
-    organization.subjects.push(newSubject);
+    // Add the subject to the organization's subjects array
+    organization.subjects.push(subject);
     await organization.save();
 
-    return NextResponse.json(newSubject);
+    // Return the newly created subject
+    return NextResponse.json(subject);
   } catch (error) {
     console.error("Error creating subject:", error);
     return NextResponse.json(
@@ -80,13 +87,37 @@ export async function POST(
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+// DELETE /api/organizations/[id]/subjects
+export async function DELETE(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { id } = context.params;
   try {
     await connectToDatabase();
-    const { id } = await params;
-    const { subjectId } = await request.json();
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    await Subject.findByIdAndDelete(subjectId);
+    const data = await req.json();
+    const { subjectId } = data;
+
+    const organization = await Organization.findOne({
+      _id: id,
+      adminId: session.user.sub
+    });
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    // Remove the subject from the organization's subjects array
+    organization.subjects = organization.subjects.filter(
+      (subject) => subject._id.toString() !== subjectId
+    );
+    await organization.save();
+
     return NextResponse.json({ message: 'Subject deleted successfully' });
   } catch (error) {
     console.error('Error deleting subject:', error);

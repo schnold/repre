@@ -14,9 +14,10 @@ interface OrganizationDialogProps {
   mode: "create" | "edit";
   organizationId?: string;
   trigger?: React.ReactNode;
+  onSuccess?: () => void;
 }
 
-export function OrganizationDialog({ mode, organizationId, trigger }: OrganizationDialogProps) {
+export function OrganizationDialog({ mode, organizationId, trigger, onSuccess }: OrganizationDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -38,6 +39,7 @@ export function OrganizationDialog({ mode, organizationId, trigger }: Organizati
         <CreateOrganizationForm
           onSuccess={() => {
             setOpen(false);
+            onSuccess?.();
           }}
           organizationId={organizationId}
         />

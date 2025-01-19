@@ -7,9 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOrganizations } from "@/hooks/use-organizations";
 
+interface Subject {
+  _id: string;
+  name: string;
+  color: string;
+  description?: string;
+  organizationId: string;
+}
+
 interface SubjectSelectorProps {
-  value: string[];
-  onChange: (value: string[]) => void;
+  value: Array<{
+    organizationId: string;
+    subjectId: string;
+  }>;
+  onChange: (value: Array<{
+    organizationId: string;
+    subjectId: string;
+  }>) => void;
   organizationIds?: string[];
 }
 
@@ -18,7 +32,7 @@ export function SubjectSelector({
   onChange, 
   organizationIds = [] 
 }: SubjectSelectorProps) {
-  const [subjects, setSubjects] = useState<string[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newSubject, setNewSubject] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,13 +49,19 @@ export function SubjectSelector({
           const response = await fetch(`/api/organizations/${orgId.toString()}/subjects`);
           if (!response.ok) return [];
           const data = await response.json();
-          // Extract subject names from the response
-          return (data.subjects || []).map((subject: any) => subject.name);
+          return data.subjects.map((subject: Subject) => ({
+            ...subject,
+            organizationId: orgId
+          })) || [];
         });
 
-        const allSubjects = await Promise.all(subjectPromises);
-        // Flatten and deduplicate subjects
-        const uniqueSubjects = [...new Set(allSubjects.flat())];
+        const allSubjectsArrays = await Promise.all(subjectPromises);
+        // Flatten and deduplicate subjects by _id
+        const uniqueSubjects = Array.from(
+          new Map(
+            allSubjectsArrays.flat().map(subject => [subject._id, subject])
+          ).values()
+        );
         setSubjects(uniqueSubjects);
       } catch (error) {
         console.error('Error fetching subjects:', error);
@@ -55,41 +75,46 @@ export function SubjectSelector({
     } else {
       setSubjects([]); // Reset subjects when no organizations are selected
     }
-  }, [organizationIds]);
+  }, [JSON.stringify(organizationIds)]); // Use JSON.stringify to compare array values instead of references
 
   const handleAddSubject = async () => {
     if (!newSubject.trim() || organizationIds.length === 0) return;
 
     setIsLoading(true);
     try {
-      // Ensure organization IDs are strings
-      const validOrgIds = organizationIds.filter(id => id && typeof id === 'string');
-
-      // Add subject to all selected organizations
-      await Promise.all(validOrgIds.map(async (orgId) => {
-        const response = await fetch(`/api/organizations/${orgId.toString()}/subjects`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newSubject })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to add subject to organization ${orgId}`);
-        }
-      }));
-
-      // Add to selected subjects
-      onChange([...value, newSubject]);
-
-      // Add to available subjects if not already present
-      if (!subjects.includes(newSubject)) {
-        setSubjects([...subjects, newSubject]);
+      // Add subject to the first selected organization
+      const orgId = organizationIds[0];
+      const response = await fetch(`/api/organizations/${orgId}/subjects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: newSubject,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to add subject to organization ${orgId}`);
       }
+
+      const newSubjectData = await response.json();
+      
+      // Add to selected subjects using the new subject's ID
+      onChange([...value, {
+        organizationId: orgId,
+        subjectId: newSubjectData._id
+      }]);
+
+      // Add to available subjects
+      setSubjects(prev => [...prev, {
+        ...newSubjectData,
+        organizationId: orgId
+      }]);
 
       setNewSubject("");
       setIsAdding(false);
     } catch (error) {
-      console.error('Error adding subject to organizations:', error);
+      console.error('Error adding subject to organization:', error);
     } finally {
       setIsLoading(false);
     }
@@ -100,22 +125,27 @@ export function SubjectSelector({
       <div className="flex flex-wrap gap-2">
         {subjects.map((subject) => (
           <Button
-            key={subject}
+            key={subject._id}
             type="button"
-            variant={value.includes(subject) ? "default" : "outline"}
+            variant={value.some(v => v.subjectId === subject._id && v.organizationId === subject.organizationId) ? "default" : "outline"}
             size="sm"
             onClick={(e) => {
               e.preventDefault();
+              const isSelected = value.some(v => v.subjectId === subject._id && v.organizationId === subject.organizationId);
               onChange(
-                value.includes(subject)
-                  ? value.filter((x) => x !== subject)
-                  : [...value, subject]
+                isSelected
+                  ? value.filter((x) => !(x.subjectId === subject._id && x.organizationId === subject.organizationId))
+                  : [...value, { organizationId: subject.organizationId, subjectId: subject._id }]
               );
             }}
             disabled={isLoading}
+            style={{
+              backgroundColor: value.some(v => v.subjectId === subject._id && v.organizationId === subject.organizationId) ? subject.color : undefined,
+              borderColor: subject.color
+            }}
           >
-            {value.includes(subject) && <Check className="mr-2 h-4 w-4" />}
-            {subject}
+            {value.some(v => v.subjectId === subject._id && v.organizationId === subject.organizationId) && <Check className="mr-2 h-4 w-4" />}
+            {subject.name}
           </Button>
         ))}
         {organizationIds.length > 0 && (
@@ -152,6 +182,12 @@ export function SubjectSelector({
           >
             Cancel
           </Button>
+        </div>
+      )}
+
+      {organizationIds.length === 0 && (
+        <div className="text-sm text-muted-foreground">
+          Please select an organization to view or add subjects
         </div>
       )}
     </div>

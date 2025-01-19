@@ -1,63 +1,127 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSelectedOrganization } from "@/hooks/use-selected-organization";
-import { Building2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useOrganizations } from "@/hooks/use-organizations";
-import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { OrganizationDialog } from "./organization-dialog";
+import { useToast } from '../ui/use-toast';
+import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
+import { useUser } from '@auth0/nextjs-auth0/client';
+
+interface Organization {
+  _id: string;
+  name: string;
+}
+
+interface OrganizationsResponse {
+  organizations: Organization[];
+  selectedOrganizationId?: string;
+}
 
 export function OrganizationSelector() {
-  const { selectedOrganization, selectOrganization, isLoading, refetchSelectedOrg } = useSelectedOrganization();
-  const { organizations, refetchOrganizations } = useOrganizations();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>();
+  const [loading, setLoading] = useState(true);
 
-  // Refresh organizations when the component mounts
   useEffect(() => {
-    refetchOrganizations();
-  }, []);
+    fetchOrganizations();
+  }, [user]);
 
-  if (isLoading) {
-    return (
-      <div className="w-[200px]">
-        <Skeleton className="h-10" />
-      </div>
-    );
+  const fetchOrganizations = async () => {
+    try {
+      if (!user) return;
+
+      const response = await fetchWithAuth('/api/organizations', { user });
+      if (!response.ok) {
+        throw new Error('Failed to fetch organizations');
+      }
+
+      const data: OrganizationsResponse = await response.json();
+      setOrganizations(data.organizations);
+      setSelectedOrganizationId(data.selectedOrganizationId);
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load organizations"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOrganizationChange = async (organizationId: string) => {
+    try {
+      const response = await fetchWithAuth('/api/organizations', {
+        user,
+        method: 'PATCH',
+        body: JSON.stringify({ organizationId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update selected organization');
+      }
+
+      setSelectedOrganizationId(organizationId);
+      toast({
+        title: "Success",
+        description: "Organization updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating organization:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update organization"
+      });
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="w-[200px]">
+    <div className="flex items-center gap-2">
       <Select
-        value={selectedOrganization?._id.toString() || ""}
-        onValueChange={async (value) => {
-          try {
-            await selectOrganization(value || null);
-            // Refresh organizations after selection changes
-            refetchOrganizations();
-          } catch (error) {
-            console.error("Error selecting organization:", error);
-          }
-        }}
+        value={selectedOrganizationId}
+        onValueChange={handleOrganizationChange}
       >
-        <SelectTrigger>
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            <SelectValue placeholder="Select organization" />
-          </div>
+        <SelectTrigger className="w-[200px]">
+          <SelectValue placeholder="Select organization" />
         </SelectTrigger>
         <SelectContent>
-          {organizations.map((org) => (
-            <SelectItem key={org._id.toString()} value={org._id.toString()}>
-              {org.name}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            <SelectLabel>Organizations</SelectLabel>
+            {organizations.map((org) => (
+              <SelectItem key={org._id} value={org._id}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
+      <OrganizationDialog
+        mode="create"
+        trigger={
+          <Button variant="outline" size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
+        }
+        onSuccess={fetchOrganizations}
+      />
     </div>
   );
 } 

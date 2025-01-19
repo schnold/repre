@@ -125,8 +125,8 @@ export function TeachersForm({ onSubmit, initialData, isLoading }: TeachersFormP
         setLoadingOrgs(true);
         const response = await fetch('/api/organizations');
         if (!response.ok) throw new Error('Failed to fetch organizations');
-        const data = await response.json();
-        setOrganizations(data);
+        const { organizations: orgs } = await response.json();
+        setOrganizations(orgs);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -220,6 +220,7 @@ export function TeachersForm({ onSubmit, initialData, isLoading }: TeachersFormP
                   <SubjectSelector
                     value={field.value}
                     onChange={field.onChange}
+                    organizationIds={form.watch('organizationIds')}
                   />
                 </FormControl>
                 <FormMessage />
